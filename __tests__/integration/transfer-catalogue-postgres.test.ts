@@ -28,7 +28,7 @@ const transfer: TransferData = {
   title: "Photo transfer",
   deleteToken: "private-delete-token",
   createdAt: "2026-09-26T18:00:00.000Z",
-  expiresAt: "2026-10-03T18:00:00.000Z",
+  expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1_000).toISOString(),
   files: [
     {
       id: "photo",
@@ -79,6 +79,7 @@ describeWithDatabase("Postgres transfer catalogue", () => {
     await closeDatabase();
   });
   beforeEach(async () => {
+    vi.stubEnv("DATA_ENCRYPTION_KEY", "integration-data-encryption-root-at-least-32-characters");
     vi.stubEnv("AUTH_SECRET", "integration-test-transfer-secret-at-least-32-bytes");
     await query("truncate transfers cascade");
     await query("truncate media_object_operations");
@@ -99,11 +100,12 @@ describeWithDatabase("Postgres transfer catalogue", () => {
   it("lets the worker read metadata without the web token secret", async () => {
     await createPostgresTransfer(transfer);
     vi.stubEnv("AUTH_SECRET", "");
+    vi.stubEnv("DATA_ENCRYPTION_KEY", "");
     const worker = await getPostgresTransferForWorker(transfer.id);
     expect(worker?.files).toHaveLength(2);
     expect(worker).not.toHaveProperty("deleteToken");
     await expect(getPostgresTransfer(transfer.id)).rejects.toThrow(
-      "Transfer token encryption key unavailable",
+      "DATA_ENCRYPTION_KEY unavailable",
     );
   });
 

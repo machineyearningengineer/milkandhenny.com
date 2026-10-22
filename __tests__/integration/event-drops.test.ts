@@ -66,6 +66,7 @@ describeWithDatabase("event drops (postgres)", () => {
   afterEach(() => vi.unstubAllEnvs());
 
   beforeEach(async () => {
+    vi.stubEnv("DATA_ENCRYPTION_KEY", "integration-data-encryption-root-at-least-32-characters");
     await truncateAll();
     await seedEvent();
   });

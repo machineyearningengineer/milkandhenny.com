@@ -1,3 +1,4 @@
+import { requireDataEncryptionSecret } from "@/lib/platform/data-encryption.server";
 import {
   createCipheriv,
   createDecipheriv,
@@ -15,6 +16,7 @@ import {
 } from "@/lib/platform/postgres-provider-context.server";
 import type { CliAuthorizationRecord } from "./cli-auth.server";
 
+// Historical wire identifier: retain it so existing ciphertext needs no migration.
 const TOKEN_KEY_ID = "auth-secret-v1";
 const PKCE_VERIFIER_PATTERN = /^[A-Za-z0-9._`-]{43,128}$/;
 
@@ -35,7 +37,9 @@ function hashCapability(purpose: "request" | "code", value: string): string {
 }
 
 function encryptionKey(): Buffer {
-  return createHmac("sha256", authSecret()).update("mah:cli-auth:seal:v1").digest();
+  return createHmac("sha256", requireDataEncryptionSecret())
+    .update("mah:cli-auth:seal:v1")
+    .digest();
 }
 
 function seal(value: string, associated: string) {

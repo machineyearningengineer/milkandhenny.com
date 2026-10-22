@@ -247,7 +247,7 @@ codebase for explicit non-production configurations. The fixed-window limiter us
 Upload access, auth versions and sessions, attendee sessions, CLI handshakes, passkey ceremonies,
 diagnostic reports, Best Dressed voting, room state, word shares and transfer media jobs use
 their Postgres repositories. Recoverable bearer tokens are encrypted with keys derived from
-`AUTH_SECRET`; session lookups use hashes and indexed expiry. The 2026-09-28 production cutover
+`DATA_ENCRYPTION_KEY`; `AUTH_SECRET` signs independently rotatable credentials. Session lookups use hashes and indexed expiry. The 2026-09-28 production cutover
 accepted the first verified Redis export as its source cutoff, so later Redis-only writes were
 intentionally excluded. Migration details and limitations are recorded in
 [the migration plan](../plan.md), [reports](./diagnostic-report-postgres.md) and

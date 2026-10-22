@@ -1,3 +1,4 @@
+import { getDataEncryptionSecret } from "@/lib/platform/data-encryption.server";
 import {
   createCipheriv,
   createDecipheriv,
@@ -59,11 +60,6 @@ type TotpRow = {
 };
 
 const developmentRates = new Map<string, { count: number; expiresAt: number }>();
-
-function authSecret(): string | null {
-  const secret = process.env.AUTH_SECRET?.trim();
-  return secret && secret.length >= 32 ? secret : null;
-}
 
 function sha256(value: string): string {
   return createHash("sha256").update(value).digest("hex");
@@ -232,7 +228,7 @@ export async function beginTotpEnrollment(): Promise<
       error: "Sign in again before setting up an authenticator app",
     };
   }
-  const secretKey = authSecret();
+  const secretKey = getDataEncryptionSecret();
   if (!secretKey) return { ok: false, status: 503, error: "MFA is not configured" };
   if (!(await reserveAttempt(session.id))) {
     return { ok: false, status: 429, error: "Too many MFA requests. Try again shortly." };
@@ -329,7 +325,7 @@ export async function finishTotpEnrollment(input: {
   token: string;
 }): Promise<TotpResult<{ recoveryCodes: string[] }>> {
   const session = await getAttendeeSession();
-  const secretKey = authSecret();
+  const secretKey = getDataEncryptionSecret();
   if (!session?.personId || !secretKey) return { ok: false, status: 401, error: "Sign in first" };
   if (!(await reserveAttempt(session.id)))
     return { ok: false, status: 429, error: "Too many attempts. Try again shortly." };
@@ -390,7 +386,7 @@ export async function finishTotpEnrollment(input: {
 
 export async function verifyPendingTotp(token: string): Promise<TotpResult<{ returnTo: string }>> {
   const session = await getAttendeeSession();
-  const secretKey = authSecret();
+  const secretKey = getDataEncryptionSecret();
   if (!session?.pendingMfa || !secretKey || !pendingMfaIsFresh(session.pendingMfa)) {
     return { ok: false, status: 401, error: "Start sign-in again" };
   }
@@ -446,7 +442,7 @@ export async function verifyPendingRecoveryCode(
   code: string,
 ): Promise<TotpResult<{ returnTo: string; recoveryCodesRemaining: number }>> {
   const session = await getAttendeeSession();
-  const secretKey = authSecret();
+  const secretKey = getDataEncryptionSecret();
   if (!session?.pendingMfa || !secretKey || !pendingMfaIsFresh(session.pendingMfa)) {
     return { ok: false, status: 401, error: "Start sign-in again" };
   }
@@ -531,7 +527,7 @@ export async function disableTotp(): Promise<TotpResult<{ disabled: true }>> {
 
 export async function regenerateRecoveryCodes(): Promise<TotpResult<{ recoveryCodes: string[] }>> {
   const session = await getAttendeeSession();
-  const secretKey = authSecret();
+  const secretKey = getDataEncryptionSecret();
   if (!session?.personId || !secretKey) {
     return { ok: false, status: 401, error: "Sign in first" };
   }

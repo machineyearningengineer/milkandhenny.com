@@ -4,6 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "secrets:recover": "node ops/secrets-recover.mjs",
+    "secrets:recover:test": "node --test ops/secrets-recover.test.mjs",
     "audio:spelling": "tsx scripts/generate-party-spelling-audio.ts",
     "data:hot-and-cold": "tsx --tsconfig tsconfig.cli.json scripts/generate-hot-and-cold-data.ts",
     "data:email-tlds": "node scripts/generate-email-tlds.mjs",

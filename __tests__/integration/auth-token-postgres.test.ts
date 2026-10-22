@@ -1,3 +1,4 @@
+process.env.DATA_ENCRYPTION_KEY = "integration-data-encryption-root-at-least-32-characters";
 import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
 
 import { revokeCurrentSession } from "@/features/auth/internal/authorization.server";
@@ -28,6 +29,7 @@ describeWithDatabase("Postgres auth token state", () => {
     await closeDatabase();
   });
   beforeEach(async () => {
+    vi.stubEnv("AUTH_SECRET", "integration-test-auth-secret-at-least-32-characters");
     await query(
       "truncate auth_recent_logins, auth_revoked_tokens, auth_token_sessions, auth_role_token_versions",
     );
@@ -62,6 +64,19 @@ describeWithDatabase("Postgres auth token state", () => {
     expect(await revokeCurrentSession(request, "admin")).toBe(true);
     expect(await verifyToken(token, "admin")).toBeNull();
     expect((await listPostgresTokenSessions(10)).sessions[0]?.status).toBe("revoked");
+  });
+
+  it("keeps encrypted history readable while signing rotation rejects the old token", async () => {
+    const token = await signToken("admin");
+    expect(token).toBeTruthy();
+    if (!token) return;
+    const key = loginDedupeKey("admin", "127.0.0.1", "rotation");
+    await registerTokenSession(token, { ip: "127.0.0.1", ua: "rotation", source: "browser" }, key);
+    vi.stubEnv("AUTH_SECRET", "rotated-signing-root-independent-of-durable-encryption");
+    expect(await getPostgresRecentLogin(key)).toBe(token);
+    expect(await verifyToken(token, "admin")).toBeNull();
+    const replacement = await signToken("admin");
+    expect(replacement && (await verifyToken(replacement, "admin"))).toBeTruthy();
   });
 
   it("increments role versions atomically and invalidates earlier tokens", async () => {

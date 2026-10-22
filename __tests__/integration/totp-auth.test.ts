@@ -1,3 +1,4 @@
+process.env.DATA_ENCRYPTION_KEY = "integration-data-encryption-root-at-least-32-characters";
 import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
 import { Secret, TOTP } from "otpauth";
 
@@ -45,6 +46,7 @@ describeWithDatabase("TOTP authentication (postgres)", () => {
   beforeAll(applySchema);
   afterAll(closeDatabase);
   beforeEach(async () => {
+    process.env.AUTH_SECRET = "totp-authentication-test-secret-at-least-32";
     await truncateAll();
     await query(`insert into event_people (id,canonical_name) values ($1,'TOTP Person')`, [PERSON]);
     await query(
@@ -97,6 +99,8 @@ describeWithDatabase("TOTP authentication (postgres)", () => {
       status: 401,
     });
 
+    // Signing rotation must preserve enrolled MFA and recovery-code verification.
+    process.env.AUTH_SECRET = "rotated-independent-signing-secret-at-least-32";
     const pending = {
       id: "pending-totp-session",
       pendingMfa: {

@@ -1,3 +1,4 @@
+import { requireDataEncryptionSecret } from "@/lib/platform/data-encryption.server";
 import {
   createCipheriv,
   createDecipheriv,
@@ -17,6 +18,7 @@ const AUDIT_KEY = "auth:upload-open:audit";
 const WINDOW_GRACE_SECONDS = 60;
 const AUDIT_LIMIT = 20;
 const UPLOAD_WINDOW_LOCK = 8_147_311;
+// Historical wire identifier: retain it so existing ciphertext needs no migration.
 const TOKEN_KEY_ID = "auth-secret-v1";
 
 export const UPLOAD_ACCESS_COOKIE = "mah-upload-open";
@@ -65,8 +67,7 @@ function postgresSelected(): boolean {
 }
 
 function tokenEncryptionKey(): Buffer {
-  const secret = process.env.AUTH_SECRET?.trim();
-  if (!secret || secret.length < 32) throw new Error("Upload access encryption key unavailable");
+  const secret = requireDataEncryptionSecret();
   return createHmac("sha256", secret).update("mah:upload-access:key:v1").digest();
 }
 
