@@ -44,6 +44,7 @@ describeWithDatabase("Postgres transfer media events", () => {
     await closeDatabase();
   });
   beforeEach(async () => {
+    vi.stubEnv("DATA_ENCRYPTION_KEY", "integration-data-encryption-root-at-least-32-characters");
     await closeTransferMediaEventSubscriber();
     vi.stubEnv("AUTH_SECRET", "integration-test-transfer-secret-at-least-32-bytes");
     vi.stubEnv("TRANSFER_CATALOGUE_STORE", "postgres");

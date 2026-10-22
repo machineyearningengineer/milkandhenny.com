@@ -1,3 +1,4 @@
+process.env.DATA_ENCRYPTION_KEY = "integration-data-encryption-root-at-least-32-characters";
 import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
 
 import {

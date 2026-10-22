@@ -32,7 +32,7 @@ const transfer: TransferData = {
   title: "Queued transfer",
   deleteToken: "private-delete-token",
   createdAt: "2026-09-26T18:00:00.000Z",
-  expiresAt: "2999-10-03T18:00:00.000Z",
+  expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1_000).toISOString(),
   files: [
     {
       id: "raw-one",
@@ -76,6 +76,7 @@ describeWithDatabase("Postgres transfer media jobs", () => {
   afterAll(closeDatabase);
   afterEach(() => vi.unstubAllEnvs());
   beforeEach(async () => {
+    vi.stubEnv("DATA_ENCRYPTION_KEY", "integration-data-encryption-root-at-least-32-characters");
     vi.stubEnv("AUTH_SECRET", "integration-test-transfer-secret-at-least-32-bytes");
     await query("truncate transfers cascade");
     await query("truncate media_object_operations");

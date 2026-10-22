@@ -1,3 +1,4 @@
+import { createCipheriv, createHmac } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -8,7 +9,8 @@ import {
 
 describe("Postgres transfer deletion-token codec", () => {
   beforeEach(() => {
-    vi.stubEnv("AUTH_SECRET", "unit-test-transfer-key-material-at-least-32-bytes");
+    vi.stubEnv("DATA_ENCRYPTION_KEY", "unit-test-transfer-key-material-at-least-32-bytes");
+    vi.stubEnv("AUTH_SECRET", "independent-signing-key-material-at-least-32-bytes");
   });
   afterEach(() => {
     vi.unstubAllEnvs();
@@ -36,10 +38,41 @@ describe("Postgres transfer deletion-token codec", () => {
     expect(() => decryptTransferDeleteToken("transfer-one", changed, sealed.nonce)).toThrow();
   });
 
+  it("opens the historical AUTH-derived ciphertext after copying that root into DATA_ENCRYPTION_KEY", () => {
+    const historicalRoot = "historical-auth-root-material-at-least-32-bytes";
+    const key = createHmac("sha256", historicalRoot)
+      .update("mah:transfer:delete-token:aes-gcm:v1")
+      .digest();
+    const nonce = Buffer.alloc(12, 7);
+    const cipher = createCipheriv("aes-256-gcm", key, nonce);
+    cipher.setAAD(Buffer.from("mah:transfer:delete-token:auth-secret-v1:legacy-transfer"));
+    const ciphertext = Buffer.concat([
+      cipher.update("existing-delete-token", "utf8"),
+      cipher.final(),
+      cipher.getAuthTag(),
+    ]);
+    vi.stubEnv("DATA_ENCRYPTION_KEY", historicalRoot);
+    expect(decryptTransferDeleteToken("legacy-transfer", ciphertext, nonce)).toBe(
+      "existing-delete-token",
+    );
+  });
+
+  it("preserves stored ciphertext when the signing key changes", () => {
+    const sealed = encryptTransferDeleteToken("transfer-one", "private-delete-token");
+    vi.stubEnv("AUTH_SECRET", "a-new-unrelated-signing-key-at-least-32-bytes");
+    expect(decryptTransferDeleteToken("transfer-one", sealed.ciphertext, sealed.nonce)).toBe(
+      "private-delete-token",
+    );
+    vi.stubEnv("DATA_ENCRYPTION_KEY", "a-different-encryption-key-at-least-32-bytes");
+    expect(() =>
+      decryptTransferDeleteToken("transfer-one", sealed.ciphertext, sealed.nonce),
+    ).toThrow();
+  });
+
   it("fails closed without the web encryption secret", () => {
-    vi.stubEnv("AUTH_SECRET", "");
+    vi.stubEnv("DATA_ENCRYPTION_KEY", "");
     expect(() => encryptTransferDeleteToken("transfer-one", "private-delete-token")).toThrow(
-      "Transfer token encryption key unavailable",
+      "DATA_ENCRYPTION_KEY unavailable",
     );
   });
 });

@@ -1,8 +1,10 @@
+import { requireDataEncryptionSecret } from "@/lib/platform/data-encryption.server";
 import { createCipheriv, createDecipheriv, createHmac, randomBytes } from "node:crypto";
 
 import { query, queryOne, transaction } from "@/lib/platform/postgres-provider-context.server";
 import type { RevocableRole, TokenPayload, TokenSessionSource } from "./token-session.server";
 
+// Historical wire identifier: retain it so existing ciphertext needs no migration.
 const TOKEN_KEY_ID = "auth-secret-v1";
 const DEDUPE_KEY = /^auth:recent-login:(admin|upload):([a-f0-9]{24})$/;
 
@@ -11,8 +13,7 @@ export function postgresTokenStoreSelected(): boolean {
 }
 
 function encryptionKey(): Buffer {
-  const secret = process.env.AUTH_SECRET?.trim();
-  if (!secret || secret.length < 32) throw new Error("Auth token encryption key unavailable");
+  const secret = requireDataEncryptionSecret();
   return createHmac("sha256", secret).update("mah:auth-recent-login:key:v1").digest();
 }
 
