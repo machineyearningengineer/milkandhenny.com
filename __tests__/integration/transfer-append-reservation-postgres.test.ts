@@ -21,7 +21,7 @@ const transfer: TransferData = {
   title: "Append reservation",
   deleteToken: "private-token",
   createdAt: "2026-09-26T18:00:00.000Z",
-  expiresAt: "2026-10-03T18:00:00.000Z",
+  expiresAt: "2999-10-03T18:00:00.000Z",
   files: [
     {
       id: "existing",
