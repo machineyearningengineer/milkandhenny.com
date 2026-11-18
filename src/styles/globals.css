@@ -846,10 +846,11 @@
       box-shadow 400ms ease;
   }
 
+  /* No team yet: stone. The fallback lives in var() so a team-colour--* class
+     on the same element still wins; setting --team-colour here would override it. */
   .team-ticket-frame {
-    --team-colour: var(--stone-300);
-    border-color: var(--team-colour);
-    box-shadow: 0 0 0 1px color-mix(in oklch, var(--team-colour) 24%, transparent);
+    border-color: var(--team-colour, var(--stone-300));
+    box-shadow: 0 0 0 1px color-mix(in oklch, var(--team-colour, var(--stone-300)) 24%, transparent);
     transition:
       border-color 400ms ease,
       box-shadow 400ms ease;
