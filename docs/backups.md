@@ -52,13 +52,14 @@ Uploads go through the `milkandhenny-backup-drop` Worker rather than an R2 API k
 service holds only `BACKUP_DROP_TOKEN`, which can create new objects with the backup name pattern
 and nothing else: it cannot read, list, overwrite or delete. Each upload sends the file's SHA-256,
 and R2 rejects the write if the bytes it received do not match. The same token value is the Worker
-secret `BACKUP_DROP_TOKEN`; it exists nowhere else.
+secret `BACKUP_DROP_TOKEN`. The source of truth is the Bitwarden Secrets Manager secret
+`BACKUP_DROP_TOKEN` in project `milkandhenny`.
 
-| Railway variable on `postgres-backup` | Value                                                          |
-| ------------------------------------- | -------------------------------------------------------------- |
-| `DATABASE_URL`                        | `${{Postgres.DATABASE_URL}}` (reference, private network)      |
-| `BACKUP_DROP_URL`                     | `https://milkandhenny-backup-drop.owen-personal.workers.dev`   |
-| `BACKUP_DROP_TOKEN`                   | Generated; shared only with the Worker secret of the same name |
+| Railway variable on `postgres-backup` | Value                                                               |
+| ------------------------------------- | ------------------------------------------------------------------- |
+| `DATABASE_URL`                        | `${{Postgres.DATABASE_URL}}` (reference, private network)           |
+| `BACKUP_DROP_URL`                     | `https://milkandhenny-backup-drop.owen-personal.workers.dev`        |
+| `BACKUP_DROP_TOKEN`                   | From Bitwarden `BACKUP_DROP_TOKEN`; same value as the Worker secret |
 
 ## Checking that it ran
 
@@ -134,13 +135,15 @@ pnpm install --frozen-lockfile
 CLOUDFLARE_ACCOUNT_ID=d88459b45dfbe1ccc64136eac246387c pnpm exec cf deploy --profile personal-deploy
 ```
 
-To rotate the token, generate one value and pipe it to both holders, without printing it:
+To rotate the token, put a new value in Bitwarden `BACKUP_DROP_TOKEN` first (the web vault's
+generator, or `bws secret edit`), then pipe it from there to both holders without printing it:
 
 ```sh
-token="$(openssl rand -hex 32)"
+export BWS_ACCESS_TOKEN="$(security find-generic-password -s bitwarden-sm-milkandhenny -a "$USER" -w)"
+token="$(bws secret list -o json | jq -r '.[] | select(.key == "BACKUP_DROP_TOKEN") | .value')"
 printf '%s' "$token" | cf workers secrets update BACKUP_DROP_TOKEN --script-name milkandhenny-backup-drop --body @/dev/stdin --profile personal-deploy
 printf '%s' "$token" | railway variable set BACKUP_DROP_TOKEN --stdin --service postgres-backup --environment production
-unset token
+unset token BWS_ACCESS_TOKEN
 ```
 
 ## History
