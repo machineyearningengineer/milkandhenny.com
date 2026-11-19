@@ -18,6 +18,7 @@ describeWithDatabase("Postgres transfer CLI", () => {
     await closeDatabase();
   });
   beforeEach(async () => {
+    vi.stubEnv("DATA_ENCRYPTION_KEY", "integration-data-encryption-root-at-least-32-characters");
     vi.stubEnv("AUTH_SECRET", "integration-test-transfer-secret-at-least-32-bytes");
     vi.stubEnv("TRANSFER_CATALOGUE_STORE", "postgres");
     vi.stubEnv("TRANSFER_MEDIA_JOB_STORE", "postgres");

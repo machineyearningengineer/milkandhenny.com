@@ -1,3 +1,4 @@
+import { requireDataEncryptionSecret } from "@/lib/platform/data-encryption.server";
 import {
   createCipheriv,
   createDecipheriv,
@@ -7,11 +8,11 @@ import {
   timingSafeEqual,
 } from "node:crypto";
 
+// Historical AAD identifier: changing it would invalidate existing ciphertext.
 const CIPHER_VERSION = "auth-secret-v1";
 
 function tokenKey(): Buffer {
-  const secret = process.env.AUTH_SECRET?.trim();
-  if (!secret || secret.length < 32) throw new Error("Transfer token encryption key unavailable");
+  const secret = requireDataEncryptionSecret();
   return createHmac("sha256", secret).update("mah:transfer:delete-token:aes-gcm:v1").digest();
 }
 

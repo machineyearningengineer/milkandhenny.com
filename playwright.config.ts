@@ -61,6 +61,7 @@ export default defineConfig({
         VITE_BASE_URL: baseURL,
         VITE_MEDIA_PUBLIC_URL: "http://127.0.0.1:4568/public",
         AUTH_SECRET: "playwright-auth-secret-at-least-thirty-two-characters",
+        DATA_ENCRYPTION_KEY: "playwright-data-encryption-key-at-least-thirty-two-characters",
         ADMIN_PASSWORD: "playwright-admin-password",
         UPLOAD_PIN: "playwright-upload-pin",
         R2_ACCOUNT_ID: "test",

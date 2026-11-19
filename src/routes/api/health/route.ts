@@ -1,3 +1,4 @@
+import { getDataEncryptionSecret } from "@/lib/platform/data-encryption.server";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   probeMediaWorkerCapabilities,
@@ -14,16 +15,18 @@ async function handleGET() {
   const health = isMediaWorkerRole()
     ? await probeMediaWorkerCapabilities()
     : await probeSystemCapabilities();
+  const encryptionReady = getDataEncryptionSecret() !== null;
   return Response.json(
     {
-      ok: health.status !== "unhealthy",
-      status: health.status,
+      ok: health.status !== "unhealthy" && encryptionReady,
+      cryptoKeyContract: encryptionReady ? "separate-v1" : "unconfigured",
+      status: encryptionReady ? health.status : "unhealthy",
       timestamp: health.timestamp,
       version: health.runtime.version,
       commit: health.runtime.commit,
     },
     {
-      status: health.status === "unhealthy" ? 503 : 200,
+      status: health.status === "unhealthy" || !encryptionReady ? 503 : 200,
       headers: {
         "Cache-Control": "no-store",
       },
