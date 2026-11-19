@@ -28,7 +28,7 @@ const transfer: TransferData = {
   title: "Photo transfer",
   deleteToken: "private-delete-token",
   createdAt: "2026-09-26T18:00:00.000Z",
-  expiresAt: "2026-10-03T18:00:00.000Z",
+  expiresAt: new Date(Date.now() + 7 * 24 * 3600_000).toISOString(),
   files: [
     {
       id: "photo",
