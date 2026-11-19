@@ -123,8 +123,10 @@ cd backup
 railway up . --path-as-root --service postgres-backup --environment production --detach
 ```
 
-The service's cron schedule (`15 3 * * *`) and restart policy (`NEVER`) are Railway service
-settings, not files.
+The service's cron schedule (`15 3 * * *`), Dockerfile build and restart policy (`NEVER`) are
+Railway service settings, declared in [`.railway/railway.ts`](../.railway/railway.ts). Change them
+there and apply with `railway config plan` and `railway config apply`; see
+[deployment](./deployment.md#railway).
 
 After editing the Worker:
 

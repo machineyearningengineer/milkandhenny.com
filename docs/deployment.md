@@ -46,7 +46,25 @@ The checked-in CORS policies are production policies and intentionally contain o
 
 ## Railway
 
-`railway.toml` selects the Dockerfile, `/api/health`, and an on-failure restart policy. Start with one replica, 512 MB–1 GB memory, 0.5–1 vCPU, and no persistent volume.
+Railway's service settings are declared in [`.railway/railway.ts`](../.railway/railway.ts)
+(Railway Infrastructure as Code): `web` and `media-worker` build the Dockerfile, check
+`/api/health` with a 60-second timeout, restart on failure up to three times, and run one replica in
+`europe-west4`. `postgres-backup` is declared there too. The Postgres database, its volume, and all
+variables are deliberately not in the file, so applying it never touches them. Start with one
+replica, 512 MB–1 GB memory, 0.5–1 vCPU, and no persistent volume.
+
+Railway does not read `.railway/railway.ts` on deploy; the settings live on the services. To change
+one, edit the file, then from the repository root:
+
+```bash
+npm ci --prefix .railway   # installs the IaC SDK; it is not an app dependency
+railway config plan        # must list only the change you intend
+railway config apply
+```
+
+A change to build or deploy settings redeploys the affected services. Check the plan for anything
+you did not mean to change before applying, and run `railway config plan` after any dashboard edit
+to keep the file and Railway in step.
 
 The canonical production origin is `https://milkandhenny.com`. Cloudflare redirects
 `www` to the apex host while preserving the path and query string.
@@ -78,7 +96,7 @@ curl --fail https://milkandhenny.com/api/health
 curl --fail -I https://milkandhenny.com/
 ```
 
-Railway watches application and runtime inputs in `railway.toml`. Changes only
+Railway watches the application and runtime inputs listed in `.railway/railway.ts`. Changes only
 to tests, browser configuration, CI, or documentation do not trigger a web
 service deployment. The previous successful deployment remains available for
 rollback; do not delete it as part of a normal release.
