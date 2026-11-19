@@ -21,11 +21,10 @@ DATABASE_URL=… pnpm backup:postgres /absolute/secure/path/milkandhenny-YYYY-MM
 
 Encrypt the archive at rest and copy it to a different account or failure domain. Keep at least 7 daily and 4 weekly archives. Never put an archive or database URL in git.
 
-For the current production deployment, the owner chose Railway-managed daily and weekly volume
-backups without an external backup destination. This narrows recovery to what remains available in
-the Railway project; deleting the volume also deletes its Railway backups. Confirm the schedules
-are enabled in the Postgres service before relying on the 24-hour recovery target. The one-time
-encrypted local dump and restore drill are recorded in the [historical cutover plan](https://github.com/machineyearningengineer/milkandhenny.com/blob/b283af0b19bd581f65cacd7bb52dff4982c90b57/docs/archive/postgres-cutover-plan.md); they are not a recurring schedule.
+Production runs this as a nightly Railway cron service that uploads to the private R2 bucket
+`milkandhenny-backups` on a separate Cloudflare account, keeping 35 daily and 12 monthly dumps. See
+[database backups](./backups.md) for where they live, how to check the nightly run, and how to
+restore one. Railway's own volume backups remain a second copy inside the Railway project.
 
 ## PostgreSQL restore drill
 
