@@ -1,0 +1,28 @@
+{
+  "rules": [
+    {
+      "id": "abort-incomplete-uploads",
+      "enabled": true,
+      "conditions": {},
+      "abortMultipartUploadsTransition": {
+        "condition": { "type": "Age", "maxAge": 86400 }
+      }
+    },
+    {
+      "id": "daily-35-days",
+      "enabled": true,
+      "conditions": { "prefix": "postgres/" },
+      "deleteObjectsTransition": {
+        "condition": { "type": "Age", "maxAge": 3024000 }
+      }
+    },
+    {
+      "id": "monthly-12-months",
+      "enabled": true,
+      "conditions": { "prefix": "monthly/" },
+      "deleteObjectsTransition": {
+        "condition": { "type": "Age", "maxAge": 31536000 }
+      }
+    }
+  ]
+}
