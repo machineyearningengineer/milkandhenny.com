@@ -34,13 +34,16 @@ log start
 # Hold one repeatable-read transaction open, dump from its snapshot, then count rows in that same
 # snapshot, so the row counts describe exactly what is in the dump.
 coproc PSQL { psql -X -q -At -v ON_ERROR_STOP=1 -d "$DATABASE_URL"; }
+# Bash unsets PSQL once psql exits, so keep our own copies of its pipes and pid.
+psql_pid="$PSQL_PID"
+exec {to_psql}>&"${PSQL[1]}" {from_psql}<&"${PSQL[0]}"
 printf '%s\n' "begin isolation level repeatable read read only;" "select pg_export_snapshot();" \
-  >&"${PSQL[1]}"
-read -r snapshot <&"${PSQL[0]}"
+  >&"$to_psql"
+read -r snapshot <&"$from_psql"
 
 pg_dump -Fc --snapshot="$snapshot" -d "$DATABASE_URL" -f "${name}.dump"
 
-cat >&"${PSQL[1]}" <<'SQL'
+cat >&"$to_psql" <<'SQL'
 select format('%s.%s', table_schema, table_name) || E'\t' ||
   (xpath('/row/c/text()', query_to_xml(
     format('select count(*) as c from %I.%I', table_schema, table_name), false, true, '')))[1]::text
@@ -52,11 +55,12 @@ commit;
 \q
 SQL
 : >"${name}.row-counts.txt"
-while read -r line <&"${PSQL[0]}"; do
+while read -r line <&"$from_psql"; do
   [[ "$line" == "__end__" ]] && break
   printf '%s\n' "$line" >>"${name}.row-counts.txt"
 done
-wait "$PSQL_PID"
+exec {to_psql}>&-
+wait "$psql_pid"
 
 tables="$(wc -l <"${name}.row-counts.txt" | tr -d ' ')"
 rows="$(awk -F '\t' '{ total += $2 } END { print total + 0 }' "${name}.row-counts.txt")"

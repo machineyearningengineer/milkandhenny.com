@@ -62,9 +62,8 @@ secret `BACKUP_DROP_TOKEN`; it exists nowhere else.
 
 ## Checking that it ran
 
-Any failure exits non-zero, so a failed night shows as a failed run of `postgres-backup` in Railway,
-and Railway emails the project's members about failed deployments. A good run ends with this log
-line:
+Any failure exits non-zero, and Railway marks that run of `postgres-backup` as **Crashed**, the same
+state it raises crash notifications for. A good run ends with this log line:
 
 ```text
 {"event":"postgres.backup.complete","backup":"milkandhenny-postgres-<ts>"}
