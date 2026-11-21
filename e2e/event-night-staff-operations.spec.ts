@@ -3,8 +3,7 @@ import { createHash } from "node:crypto";
 import { expect, test } from "@playwright/test";
 import { Pool } from "pg";
 
-const databaseUrl =
-  process.env.TEST_DATABASE_URL ?? "postgres://postgres:test@127.0.0.1:55432/mah_test";
+const databaseUrl = process.env.TEST_DATABASE_URL;
 
 test("door staff find a typo, admit a whole order, and switch safely to a checkpoint", async ({
   browser,

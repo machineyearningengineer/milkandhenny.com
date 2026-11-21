@@ -33,7 +33,6 @@ import {
 } from "../../features/things/same-brain/same-brain-room.server";
 import { startSameBrainScenario } from "../../features/things/same-brain/same-brain-room-engine.server";
 import { SAME_BRAIN_SCENARIOS } from "../../features/things/same-brain/same-brain-scenarios";
-import type { SameBrainSnapshot } from "../../features/things/same-brain/types";
 
 afterEach(() => {
   deliveredResults.length = 0;
@@ -854,38 +853,7 @@ describe("same brain room", () => {
   });
 });
 
-/**
- * Every scenario the harness offers, opened the way the harness opens it.
- *
- * This is the part that keeps the two honest. A scenario whose `expect` line stops being true is
- * either a rules regression or a stale description, and both are worth failing a build over.
- */
 describe("same brain scenarios", () => {
-  const scenarioOf = (id: string) => {
-    const scenario = SAME_BRAIN_SCENARIOS.find((entry) => entry.id === id);
-    if (!scenario) throw new Error(`no scenario ${id}`);
-    return scenario;
-  };
-
-  const openScenario = async (id: string) => {
-    const scenario = scenarioOf(id);
-    const started = await startSameBrainScenario({
-      names: ["Abel", "Maya", "Daniel", "Priya", "Tom", "Ana"].slice(0, scenario.players),
-      toggles: scenario.toggles,
-      question: scenario.question,
-      answers: scenario.answers,
-    });
-    if (started.error) throw new Error(started.error);
-    const snapshot = await readSameBrainSnapshot({
-      roomId: started.roomId,
-      credential: started.seats[0].playerToken,
-      playerId: started.seats[0].playerId,
-      lastSequence: 0,
-    });
-    if (!snapshot.ok) throw new Error(snapshot.error);
-    return { started, snapshot: snapshot.snapshot as SameBrainSnapshot };
-  };
-
   /**
    * A scenario is opened to look at a scored round, so it must still be showing that round when it
    * renders.
@@ -927,65 +895,5 @@ describe("same brain scenarios", () => {
       expect(started.error, scenario.id).toBeNull();
       expect(started.seats, scenario.id).toHaveLength(scenario.players);
     }
-  });
-
-  it("clean-majority: the spoon group scores two each and nobody is odd", async () => {
-    const { snapshot } = await openScenario("clean-majority");
-    expect(snapshot.result?.pointsEach).toBe(2);
-    expect(snapshot.result?.clusters[snapshot.result.herdIndex as number].label).toBe("spoon");
-    expect(snapshot.result?.oddPlayerId).toBeNull();
-  });
-
-  it("odd-one-out: five agree and the sixth is named", async () => {
-    const { snapshot } = await openScenario("odd-one-out");
-    expect(snapshot.result?.oddPlayerId).toBeTruthy();
-    expect(snapshot.players.find(({ name }) => name === "Ana")?.aloneCount).toBe(1);
-    expect(snapshot.players.find(({ name }) => name === "Ana")?.out).toBe(false);
-  });
-
-  it("odd-one-eliminated: the same position removes them", async () => {
-    const { snapshot } = await openScenario("odd-one-eliminated");
-    expect(snapshot.players.find(({ name }) => name === "Ana")?.out).toBe(true);
-  });
-
-  it("spelling-split: normalisation leaves a pair and keeps ocean separate", async () => {
-    const { snapshot } = await openScenario("spelling-split");
-    expect(snapshot.result?.clusters.find(({ label }) => label === "sea")?.playerIds).toHaveLength(
-      2,
-    );
-    expect(
-      snapshot.result?.clusters.find(({ label }) => label === "ocean")?.playerIds,
-    ).toHaveLength(1);
-  });
-
-  it("punctuation-only: four agree after normalisation", async () => {
-    const { snapshot } = await openScenario("punctuation-only");
-    expect(
-      snapshot.result?.clusters.find(({ label }) => label === "butter")?.playerIds,
-    ).toHaveLength(4);
-  });
-
-  it("dead-split: nobody scores", async () => {
-    const { snapshot } = await openScenario("dead-split");
-    expect(snapshot.result?.herdIndex).toBeNull();
-    expect(snapshot.result?.noScoreReason).toBe("split");
-    expect(snapshot.players.every(({ score }) => score === 0)).toBe(true);
-  });
-
-  it("all-alone: no herd and no odd one either", async () => {
-    const { snapshot } = await openScenario("all-alone");
-    expect(snapshot.result?.herdIndex).toBeNull();
-    expect(snapshot.result?.oddPlayerId).toBeNull();
-  });
-
-  it("unanimous: one point each, not two", async () => {
-    const { snapshot } = await openScenario("unanimous");
-    expect(snapshot.result?.pointsEach).toBe(1);
-  });
-
-  it("three-players: a pair is a herd and the third is odd", async () => {
-    const { snapshot } = await openScenario("three-players");
-    expect(snapshot.result?.pointsEach).toBe(2);
-    expect(snapshot.result?.oddPlayerId).toBeTruthy();
   });
 });

@@ -5,8 +5,7 @@ import { waitForAppHydration } from "./support/multiplayer";
 
 test("active reports are present in the initial admin overview", async ({ page, baseURL }) => {
   test.skip(process.env.REPORT_STORE !== "postgres", "Requires the isolated Postgres report store");
-  const databaseUrl =
-    process.env.TEST_DATABASE_URL ?? "postgres://postgres:test@127.0.0.1:55432/mah_test";
+  const databaseUrl = process.env.TEST_DATABASE_URL;
   const database = new Pool({ connectionString: databaseUrl });
   const key = `report-query-${randomUUID()}`;
   const url = "/admin?view=overview";

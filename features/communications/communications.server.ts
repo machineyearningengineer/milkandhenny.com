@@ -1,6 +1,6 @@
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 
-import { enqueueEmails } from "@/lib/platform/email-outbox.server";
+import { enqueueEmails, hashEmailRecipient } from "@/lib/platform/email-outbox.server";
 import { query } from "@/lib/platform/postgres.server";
 import { getBaseUrlForRequest } from "@/lib/shared/config";
 import { getEvent } from "@/features/events/store.server";
@@ -76,10 +76,6 @@ function isMarketingKind(kind: CommunicationKind): boolean {
 }
 
 type CandidateRow = { email: string; display_name: string | null; source: string };
-
-function hashEmail(email: string): string {
-  return createHash("sha256").update(email.trim().toLowerCase()).digest("hex");
-}
 
 function iso(value: Date | string | null): string | null {
   return value ? new Date(value).toISOString() : null;
@@ -161,7 +157,7 @@ export async function syncContacts(): Promise<void> {
     const email = row.email;
     if (!email) continue;
     const displayName = row.display_name?.trim() || null;
-    const key = hashEmail(email);
+    const key = hashEmailRecipient(email);
     const existing = merged.get(key);
     if (existing) {
       existing.sources.add(row.source);
@@ -291,7 +287,7 @@ async function resolveRecipients(input: {
         where event_slug = $1 and status = 'valid' and email is not null`,
       [input.eventSlug],
     );
-    hashes = tickets.map((ticket) => hashEmail(ticket.email));
+    hashes = tickets.map((ticket) => hashEmailRecipient(ticket.email));
   } else if (input.audience === "pitch_owners") {
     const pitches = await query<{ email: string }>(
       `select distinct d.owner_email_hash as email

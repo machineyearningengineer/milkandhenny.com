@@ -1,5 +1,4 @@
 import { authorizeLiarsSocket } from "@/features/things/liars/liars-room.server";
-import { liarsRealtimeChannel } from "@/features/things/liars/liars-keys";
 import { createMultiplayerWakeHandler } from "@/features/things/shared/multiplayer-wake-handler.server";
 
 interface LiarsRealtimeSession {
@@ -8,7 +7,6 @@ interface LiarsRealtimeSession {
 }
 
 export default createMultiplayerWakeHandler<LiarsRealtimeSession>({
-  channel: liarsRealtimeChannel,
   game: "liars",
   async authorize(payload) {
     const roomId = typeof payload.roomId === "string" ? payload.roomId : "";

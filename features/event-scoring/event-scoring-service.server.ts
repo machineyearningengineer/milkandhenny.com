@@ -1,7 +1,6 @@
 import { Context, Effect, Layer } from "effect";
 
 import { eventsOperation } from "@/features/events/events-operation.server";
-import { runAdminScoringAction } from "./admin-api/actions.server";
 import { readAdminScoring } from "./admin-api/read.server";
 import { consumeOfficialResultWake } from "@/features/game-results/outbox.server";
 import type { OfficialGameResultEnvelope } from "@/features/game-results/types";
@@ -76,7 +75,6 @@ const reconcileOfflineCommands = mutate(
   offlineEngine.reconcileOfflineScoreCommands,
 );
 const closeOfflineReservation = mutate("offline_close", offlineEngine.closeOfflineScoreReservation);
-const runAdminAction = mutate("admin_action", runAdminScoringAction);
 const readAdmin = read("admin_read", readAdminScoring);
 
 const consumeWake = (envelopes: readonly OfficialGameResultEnvelope[]) =>
@@ -124,7 +122,6 @@ export class EventScoringService extends Context.Service<
     readonly reconcileOfflineCommands: typeof reconcileOfflineCommands;
     readonly closeOfflineReservation: typeof closeOfflineReservation;
     readonly readAdmin: typeof readAdmin;
-    readonly runAdminAction: typeof runAdminAction;
   }
 >()("EventScoringService") {
   // Historical scoring remains callable for explicit administrative recovery, but it owns no
@@ -158,7 +155,6 @@ export class EventScoringService extends Context.Service<
     reserveOfflineBudget,
     resolveStaffParticipant,
     reverseStaffAward,
-    runAdminAction,
     searchStaffParticipants,
     shuffleStaffTeams,
     submitStaffGuest,

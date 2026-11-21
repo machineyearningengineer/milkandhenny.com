@@ -1,4 +1,4 @@
-import { gameBrowserKey, gameRealtimeChannel, gameRoomNamespace } from "../shared/multiplayer-keys";
+import { gameBrowserKey, gameRoomNamespace } from "../shared/multiplayer-keys";
 
 export function twinRoomRedisKeys(roomId: string) {
   const base = gameRoomNamespace("twin", 1, roomId);
@@ -16,8 +16,6 @@ export function twinRoomRedisKeys(roomId: string) {
     log: `${base}:log`,
   };
 }
-
-export const twinRealtimeChannel = (roomId: string) => gameRealtimeChannel("twin", 1, roomId);
 
 export const twinBrowserKeys = {
   invite: (roomId: string) => gameBrowserKey("twin", 1, "room", roomId, "invite"),

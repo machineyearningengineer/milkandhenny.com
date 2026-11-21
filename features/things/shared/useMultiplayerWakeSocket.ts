@@ -90,6 +90,7 @@ export function useMultiplayerWakeSocket(input: MultiplayerWakeSocketInput) {
       socket = nextSocket;
       socketRef.current = nextSocket;
       nextSocket.onopen = () => {
+        if (socket !== nextSocket) return;
         const hello = JSON.parse(helloJson) as Record<string, unknown>;
         nextSocket.send(JSON.stringify({ ...hello, reconnect: attempt > 0 ? "1" : undefined }));
         heartbeatTimer = window.setInterval(() => {
@@ -103,6 +104,7 @@ export function useMultiplayerWakeSocket(input: MultiplayerWakeSocketInput) {
         }, MULTIPLAYER_REALTIME_LIMITS.heartbeatIntervalMs);
       };
       nextSocket.onmessage = (event) => {
+        if (socket !== nextSocket) return;
         let message: unknown;
         try {
           message = JSON.parse(String(event.data));
@@ -126,9 +128,8 @@ export function useMultiplayerWakeSocket(input: MultiplayerWakeSocketInput) {
         }
       };
       nextSocket.onclose = (event) => {
-        const isCurrentSocket = socket === nextSocket;
-        if (!isCurrentSocket) return;
-        if (socket === nextSocket) socket = null;
+        if (socket !== nextSocket) return;
+        socket = null;
         if (socketRef.current === nextSocket) socketRef.current = null;
         clearTimers();
         if (!active || suspended) return;
@@ -175,8 +176,10 @@ export function useMultiplayerWakeSocket(input: MultiplayerWakeSocketInput) {
       window.removeEventListener("online", resume);
       window.removeEventListener("offline", markOffline);
       document.removeEventListener("visibilitychange", resume);
-      if (socketRef.current === socket) socketRef.current = null;
-      socket?.close(MULTIPLAYER_SOCKET_CLOSE.normal, "leaving");
+      const current = socket;
+      socket = null;
+      if (socketRef.current === current) socketRef.current = null;
+      current?.close(MULTIPLAYER_SOCKET_CLOSE.normal, "leaving");
     };
   }, [helloJson, input.path]);
 

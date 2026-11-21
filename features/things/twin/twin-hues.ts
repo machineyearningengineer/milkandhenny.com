@@ -1,4 +1,4 @@
-import { twinPlane, twinRandom, TWIN_ORDERS } from "./twin-deck";
+import { twinAvailableOrders, twinPlane, twinRandom } from "./twin-deck";
 import { TWIN_SYMBOL_COUNT, TWIN_SYMBOLS } from "./twin-symbols";
 
 /**
@@ -40,9 +40,7 @@ const TRIPLE_PENALTY = 1_000;
 
 function planeLines() {
   // Point indices are symbol indices, so the planes can be pooled directly.
-  return TWIN_ORDERS.filter((order) => order * order + order + 1 <= TWIN_SYMBOL_COUNT).flatMap(
-    (order) => twinPlane(order).map((line) => [...line]),
-  );
+  return twinAvailableOrders().flatMap((order) => twinPlane(order));
 }
 
 function costOf(lines: readonly (readonly number[])[], hues: readonly number[]) {
@@ -125,21 +123,4 @@ const INDEX_BY_ID = new Map(TWIN_SYMBOLS.map((symbol, index) => [symbol.id, inde
 export function twinSymbolHue(id: string) {
   const index = INDEX_BY_ID.get(id);
   return index === undefined ? 0 : (hues()[index] ?? 0);
-}
-
-/** How well the assignment did, for the tests and for anyone tempted to change the palette. */
-export function twinHueQuality() {
-  const assignment = hues();
-  const report = { cards: 0, cleanCards: 0, worstOnACard: 0, repeatedPairs: 0 };
-  for (const line of planeLines()) {
-    report.cards += 1;
-    const counts = new Map<number, number>();
-    for (const point of line)
-      counts.set(assignment[point], (counts.get(assignment[point]) ?? 0) + 1);
-    const worst = Math.max(...counts.values());
-    report.worstOnACard = Math.max(report.worstOnACard, worst);
-    if (worst === 1) report.cleanCards += 1;
-    for (const count of counts.values()) if (count >= 2) report.repeatedPairs += count - 1;
-  }
-  return report;
 }

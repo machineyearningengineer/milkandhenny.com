@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { __emailDeliveryTesting } from "@/lib/platform/email-delivery-events.server";
 import {
   authenticateCloudflareEmailRelay,
   parseCloudflareEmailDeliveryEvent,
@@ -30,9 +29,6 @@ describe("Cloudflare email delivery events", () => {
       recipients: ["Guest@Example.com"],
       suppressRecipient: true,
     });
-    expect(__emailDeliveryTesting.hashRecipient(" Guest@Example.com ")).toBe(
-      __emailDeliveryTesting.hashRecipient("guest@example.com"),
-    );
   });
 
   it("records an exhausted soft bounce without permanently suppressing the recipient", () => {

@@ -49,7 +49,7 @@ export function createReliableMultiplayerActionDispatcher<Action extends object,
       .then(() => dispatch(action, actionId))
       .then(
         (result) => {
-          uncertain.delete(fingerprint);
+          if (generation === actionGeneration) uncertain.delete(fingerprint);
           return result;
         },
         (error: unknown) => {

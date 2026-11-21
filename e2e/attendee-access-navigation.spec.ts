@@ -3,8 +3,7 @@ import { expect, test } from "@playwright/test";
 import { Pool } from "pg";
 import { waitForAppHydration } from "./support/multiplayer";
 
-const databaseUrl =
-  process.env.TEST_DATABASE_URL ?? "postgres://postgres:test@127.0.0.1:55432/mah_test";
+const databaseUrl = process.env.TEST_DATABASE_URL;
 
 test("anonymous account navigation reaches sign in without an error boundary", async ({ page }) => {
   await page.goto("/");

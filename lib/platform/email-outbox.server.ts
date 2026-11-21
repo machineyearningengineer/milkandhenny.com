@@ -8,11 +8,7 @@ import {
   type SendEmailResult,
 } from "./email.server";
 import { log } from "./logger.server";
-import {
-  durableWorkSnapshot,
-  DURABLE_WORK_LOG_SCOPE,
-  type DurableWorkSnapshot,
-} from "@/features/system/durable-work";
+import { DURABLE_WORK_LOG_SCOPE, type DurableWorkSnapshot } from "@/features/system/durable-work";
 import { isDatabaseConfigured, query, transaction } from "./postgres.server";
 import {
   EMAIL_LEDGER_RETENTION_DAYS,
@@ -65,6 +61,37 @@ export function maskEmailRecipient(value: string): string {
   const at = normalized.lastIndexOf("@");
   if (at <= 0 || at === normalized.length - 1) return "hidden recipient";
   return `${normalized.slice(0, 1)}…@${normalized.slice(at + 1)}`;
+}
+
+export async function suppressEmailRecipient(
+  client: PoolClient,
+  recipient: string,
+  reason: "bounced" | "complained",
+  providerMessageId: string,
+  occurredAt?: Date,
+): Promise<void> {
+  await client.query(
+    `insert into email_suppressions (
+       recipient_hash, recipient_hint, reason, provider_message_id,
+       first_occurred_at, last_occurred_at
+     ) values ($1,$2,$3,$4,coalesce($5, now()),coalesce($5, now()))
+     on conflict (recipient_hash) do update
+       set recipient_hint = excluded.recipient_hint,
+           reason = excluded.reason,
+           provider_message_id = excluded.provider_message_id,
+           last_occurred_at = greatest(email_suppressions.last_occurred_at, excluded.last_occurred_at),
+           updated_at = now()
+       where (excluded.reason = 'complained' and email_suppressions.reason = 'bounced')
+          or (excluded.reason = email_suppressions.reason
+              and excluded.last_occurred_at >= email_suppressions.last_occurred_at)`,
+    [
+      hashEmailRecipient(recipient),
+      maskEmailRecipient(recipient),
+      reason,
+      providerMessageId,
+      occurredAt,
+    ],
+  );
 }
 
 function isAttachment(value: unknown): value is EmailAttachment {
@@ -181,8 +208,8 @@ async function insertEmail(
        retain_until, communication_id
      ) values (
        $1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10::jsonb,coalesce($11, now()),
-       coalesce($15, greatest(coalesce($11, now()), now()) + ($13 * interval '1 day')),
-       greatest(coalesce($11, now()), now()) + ($14 * interval '1 day'), $12
+       coalesce($15, greatest(coalesce($11, now()), now()) + ($13 * interval '24 hours')),
+       greatest(coalesce($11, now()), now()) + ($14 * interval '24 hours'), $12
      )
      on conflict (idempotency_key) do update
        set idempotency_key = excluded.idempotency_key
@@ -332,8 +359,23 @@ export async function claimEmailOutboxBatch(): Promise<EmailOutboxRow[]> {
   });
 }
 
-export async function expireUndeliverableEmailMessages(): Promise<number> {
-  const rows = await query<{ id: string }>(
+async function updateStageDeliveries(
+  client: PoolClient,
+  outboxRows: { id: string }[],
+  status: "accepted" | "failed",
+): Promise<void> {
+  if (outboxRows.length === 0) return;
+  await client.query(
+    `update communication_stage_deliveries
+        set status = $2, updated_at = now()
+      where outbox_id = any($1::uuid[])
+        and (status = 'queued' or (status = 'accepted' and $2 = 'failed'))`,
+    [outboxRows.map(({ id }) => id), status],
+  );
+}
+
+export async function expireUndeliverableEmailMessages(client: PoolClient): Promise<number> {
+  const { rows } = await client.query<{ id: string }>(
     `update email_outbox
         set status = 'failed', message = null, locked_until = null,
             provider_status = case when exists (
@@ -359,14 +401,7 @@ export async function expireUndeliverableEmailMessages(): Promise<number> {
       returning id`,
     [EMAIL_MAX_DELIVERY_ATTEMPTS],
   );
-  if (rows.length > 0) {
-    await query(
-      `update communication_stage_deliveries
-          set status = 'failed', updated_at = now()
-        where outbox_id = any($1::uuid[]) and status in ('queued', 'accepted')`,
-      [rows.map((row) => row.id)],
-    );
-  }
+  await updateStageDeliveries(client, rows, "failed");
   return rows.length;
 }
 
@@ -376,51 +411,43 @@ export async function finishEmailOutboxAttempt(
 ): Promise<void> {
   const message = parseMessage(row.message);
   if (!message) {
-    const updated = await query<{ id: string }>(
-      `update email_outbox
-          set status = 'failed', message = null, locked_until = null,
-              provider_status = 500, last_error = 'Stored email payload is invalid',
-              failed_at = now(), updated_at = now()
-        where id = $1 and status = 'processing' and attempts = $2
-        returning id`,
-      [row.id, row.attempts],
-    );
-    if (updated.length === 0) return;
-    await query(
-      `update communication_stage_deliveries
-          set status = 'failed', updated_at = now()
-        where outbox_id = $1 and status in ('queued', 'accepted')`,
-      [row.id],
-    );
+    await transaction(async (client) => {
+      const { rows } = await client.query<{ id: string }>(
+        `update email_outbox
+            set status = 'failed', message = null, locked_until = null,
+                provider_status = 500, last_error = 'Stored email payload is invalid',
+                failed_at = now(), updated_at = now()
+          where id = $1 and status = 'processing' and attempts = $2
+          returning id`,
+        [row.id, row.attempts],
+      );
+      await updateStageDeliveries(client, rows, "failed");
+    });
     return;
   }
 
   const result = await deliver(message, row.idempotency_key);
   if (result.ok) {
-    const updated = await query<{ id: string }>(
-      `update email_outbox
-          set status = 'accepted', message = null, locked_until = null,
-              provider_message_id = $2, provider_status = null, last_error = null,
-              accepted_at = now(), updated_at = now()
-        where id = $1 and status = 'processing' and attempts = $3
-        returning id`,
-      [row.id, result.id, row.attempts],
-    );
-    if (updated.length === 0) return;
-    await query(
-      `update communication_stage_deliveries
-          set status = 'accepted', updated_at = now()
-        where outbox_id = $1 and status = 'queued'`,
-      [row.id],
-    );
+    await transaction(async (client) => {
+      const { rows } = await client.query<{ id: string }>(
+        `update email_outbox
+            set status = 'accepted', message = null, locked_until = null,
+                provider_message_id = $2, provider_status = null, last_error = null,
+                accepted_at = now(), updated_at = now()
+          where id = $1 and status = 'processing' and attempts = $3
+          returning id`,
+        [row.id, result.id, row.attempts],
+      );
+      await updateStageDeliveries(client, rows, "accepted");
+    });
     return;
   }
 
   const exhausted = row.attempts >= EMAIL_MAX_DELIVERY_ATTEMPTS;
   const permanent = isPermanentFailure(result) || exhausted;
   const safeError = result.error.replaceAll(message.to, "[recipient]").slice(0, 500);
-  const updated = await transaction(async (client) => {
-    const update = await client.query<{ id: string }>(
+  await transaction(async (client) => {
+    const { rows } = await client.query<{ id: string }>(
       permanent
         ? `update email_outbox
               set status = 'failed', message = null, locked_until = null,
@@ -441,36 +468,19 @@ export async function finishEmailOutboxAttempt(
           ]
         : [row.id, result.status, safeError, retryDelaySeconds(row.attempts), row.attempts],
     );
-    if (update.rowCount === 0) return false;
+    if (rows.length === 0) return;
     if (result.suppressRecipient) {
-      await client.query(
-        `insert into email_suppressions
-           (recipient_hash,recipient_hint,reason,provider_message_id,first_occurred_at,last_occurred_at)
-         values ($1,$2,'bounced',$3,now(),now())
-         on conflict (recipient_hash) do update
-           set reason = 'bounced',provider_message_id = excluded.provider_message_id,
-               last_occurred_at = now(),updated_at = now()`,
-        [hashEmailRecipient(message.to), maskEmailRecipient(message.to), `outbox:${row.id}`],
-      );
+      await suppressEmailRecipient(client, message.to, "bounced", `outbox:${row.id}`);
     }
-    return true;
+    if (permanent) await updateStageDeliveries(client, rows, "failed");
   });
-  if (!updated) return;
-  if (permanent) {
-    await query(
-      `update communication_stage_deliveries
-          set status = 'failed', updated_at = now()
-        where outbox_id = $1 and status in ('queued', 'accepted')`,
-      [row.id],
-    );
-  }
 }
 
 let draining: Promise<number> | null = null;
 
 export function drainEmailOutbox(): Promise<number> {
   draining ??= (async () => {
-    let handled = await expireUndeliverableEmailMessages();
+    let handled = await transaction(expireUndeliverableEmailMessages);
     for (;;) {
       const rows = await claimEmailOutboxBatch();
       if (rows.length === 0) return handled;
@@ -531,13 +541,13 @@ export async function describeEmailOutbox(): Promise<{
       awaitingProviderFeedback: 0,
       oldestPendingAt: null,
       latestDeliveryEventAt: null,
-      durableWork: durableWorkSnapshot({
+      durableWork: {
         available: false,
         pending: 0,
         processing: 0,
         failed: 0,
         oldestPendingAt: null,
-      }),
+      },
     };
   }
   try {
@@ -579,13 +589,13 @@ export async function describeEmailOutbox(): Promise<{
       awaitingProviderFeedback: Number(row?.awaiting_feedback ?? 0),
       oldestPendingAt: row?.oldest_pending_at?.toISOString() ?? null,
       latestDeliveryEventAt: row?.latest_delivery_event_at?.toISOString() ?? null,
-      durableWork: durableWorkSnapshot({
+      durableWork: {
         available: true,
         pending: Number(row?.pending ?? 0),
         processing: Number(row?.processing ?? 0),
         failed: Number(row?.failed ?? 0),
         oldestPendingAt: row?.oldest_pending_at?.toISOString() ?? null,
-      }),
+      },
     };
   } catch (error) {
     log.error(DURABLE_WORK_LOG_SCOPE.email, "Could not read outbox status", {}, error);
@@ -600,13 +610,13 @@ export async function describeEmailOutbox(): Promise<{
       awaitingProviderFeedback: 0,
       oldestPendingAt: null,
       latestDeliveryEventAt: null,
-      durableWork: durableWorkSnapshot({
+      durableWork: {
         available: false,
         pending: 0,
         processing: 0,
         failed: 0,
         oldestPendingAt: null,
-      }),
+      },
     };
   }
 }

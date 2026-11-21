@@ -1,6 +1,5 @@
 /**
  * Slugify a heading label for use as an id (anchor).
- * Must match the logic used in rehype-slug so TOC links line up.
  */
 export function slug(text: string): string {
   return text
@@ -12,7 +11,7 @@ export function slug(text: string): string {
 
 /**
  * Return unique ids for a list of labels in order.
- * Duplicates get -1, -2, etc. so TOC and rehype-slug stay in sync.
+ * Duplicates get -1, -2, etc. in document order.
  */
 export function uniqueHeadingIds(labels: string[]): { id: string; label: string }[] {
   const used = new Set<string>();

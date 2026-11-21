@@ -34,11 +34,6 @@ export interface ReplayableGameState {
   readonly processedActions: readonly string[];
 }
 
-export type GameRuleError<Code extends string = string> = {
-  readonly code: Code;
-  readonly message: string;
-};
-
 /**
  * Pure shell used by authoritative room reducers. The reducer may mutate only the structured clone
  * it receives; persistence, publication, logging, and ID generation stay outside this function.
@@ -138,17 +133,6 @@ export function gameCommandEvent<Game extends string>(input: {
 export function replaceGameState<State extends object>(target: State, next: State): void {
   for (const key of Object.keys(target) as Array<keyof State>) delete target[key];
   Object.assign(target, next);
-}
-
-export function gameTransition<State, Event>(
-  state: State,
-  events: readonly Event[] = [],
-): GameResult<GameTransition<State, Event>, never> {
-  return { ok: true, value: { state, events } };
-}
-
-export function gameRuleFailure<Error>(error: Error): GameResult<never, Error> {
-  return { ok: false, error };
 }
 
 export function gameRandomInt(context: GameContext) {

@@ -1,16 +1,17 @@
 import { raceLockedWrite } from "../helpers/locked-write";
 import { randomUUID } from "node:crypto";
 
-import { afterAll, beforeAll, beforeEach, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
 
 import {
   listCommunicationPlans,
   updateCommunicationPlanStage,
   saveCommunicationTemplate,
+  sendCommunicationStageNow,
   listCommunicationStageDeliveries,
 } from "@/features/communications/communication-plans.server";
 import { hashEmail as hashTicketEmail } from "@/features/tickets/qr.server";
-import { hashEmailRecipient } from "@/lib/platform/email-outbox.server";
+import { hashEmailRecipient, setEmailOutboxEffectWake } from "@/lib/platform/email-outbox.server";
 import { query } from "@/lib/platform/postgres.server";
 import { applySchema, closeDatabase, describeWithDatabase, truncateAll } from "../helpers/postgres";
 
@@ -178,6 +179,47 @@ describeWithDatabase("communication plans (postgres)", () => {
         deliveryStatus: "failed",
       },
     ]);
+  });
+
+  it("only wakes email delivery once the outbox can be linked to the stage", async () => {
+    const stageId = randomUUID();
+    const planId = randomUUID();
+    const email = "stage-link@example.com";
+    await query(
+      `insert into events (slug,title,status,starts_at)
+       values ('stage-link','Stage link','published',now() + interval '1 day');
+       insert into ticket_types (event_slug,id,name,quantity)
+       values ('stage-link','entry','Entry',20)`,
+    );
+    await query(
+      `insert into tickets (id,event_slug,ticket_type_id,holder_name,email,email_hash,order_id)
+       values ('STAGE-TEST-TICKET','stage-link','entry','Stage Link',$1,$2,'stage-link-order')`,
+      [email, hashTicketEmail(email)],
+    );
+    await query(
+      `insert into communication_plans (id,event_slug,name,status)
+       values ($1,'stage-link','Stage link','scheduled')`,
+      [planId],
+    );
+    await query(
+      `insert into communication_plan_stages
+         (id,plan_id,stage_key,label,position,kind,audience,subject,body,status)
+       values ($1,$2,'prepare','Prepare',0,'event_service','event_attendees','Prepare','Body','scheduled')`,
+      [stageId, planId],
+    );
+    const wake = vi.fn();
+    setEmailOutboxEffectWake(wake);
+    await query(
+      "alter table communication_stage_deliveries add constraint test_link_write check (outbox_id is null)",
+    );
+    try {
+      await expect(sendCommunicationStageNow(stageId)).rejects.toThrow("test_link_write");
+      await expect(query("select id from email_outbox")).resolves.toEqual([]);
+      expect(wake).not.toHaveBeenCalled();
+    } finally {
+      await query("alter table communication_stage_deliveries drop constraint test_link_write");
+      setEmailOutboxEffectWake(null);
+    }
   });
 
   it("should keep a failed current recipient actionable", async () => {

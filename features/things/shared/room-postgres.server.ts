@@ -181,7 +181,8 @@ export async function transitionPostgresRoom<State, Outcome>(input: {
       }
     }
     const next = input.transition(room);
-    if (next.expiresAt <= Date.now()) throw new Error("Room transition cannot persist expiry");
+    // Closing a room intentionally expires it immediately.
+    if (!Number.isFinite(next.expiresAt)) throw new Error("Invalid room transition expiry");
     const revision = room.revision + (next.persist === false ? 0 : 1);
     if (next.persist !== false)
       await client.query(

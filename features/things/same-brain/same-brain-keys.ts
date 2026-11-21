@@ -1,4 +1,4 @@
-import { gameBrowserKey, gameRealtimeChannel, gameRoomNamespace } from "../shared/multiplayer-keys";
+import { gameBrowserKey, gameRoomNamespace } from "../shared/multiplayer-keys";
 
 export function sameBrainRoomRedisKeys(roomId: string) {
   const base = gameRoomNamespace("same-brain", 1, roomId);
@@ -8,9 +8,6 @@ export function sameBrainRoomRedisKeys(roomId: string) {
     joinReceipt: (joinId: string) => `${base}:join-receipt:${joinId}`,
   };
 }
-
-export const sameBrainRealtimeChannel = (roomId: string) =>
-  gameRealtimeChannel("same-brain", 1, roomId);
 
 export const sameBrainBrowserKeys = {
   hostSession: (roomId: string) => gameBrowserKey("same-brain", 1, "room", roomId, "host-session"),

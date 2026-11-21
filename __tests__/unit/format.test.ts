@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { formatBytes } from "@/lib/shared/format";
+import { formatBytes, formatCompactBytes } from "@/lib/shared/format";
 
 describe("formatBytes", () => {
   it("formats bytes", () => {
@@ -34,4 +34,8 @@ describe("formatBytes", () => {
     // Exactly 1 MB
     expect(formatBytes(1024 * 1024)).toBe("1.0 MB");
   });
+});
+
+it("formats large upload totals with a valid unit", () => {
+  expect(formatCompactBytes(1024 ** 4)).toBe("1 tb");
 });

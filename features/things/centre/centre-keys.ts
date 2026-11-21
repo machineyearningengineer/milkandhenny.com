@@ -1,4 +1,4 @@
-import { gameBrowserKey, gameRealtimeChannel, gameRoomNamespace } from "../shared/multiplayer-keys";
+import { gameBrowserKey, gameRoomNamespace } from "../shared/multiplayer-keys";
 
 export function centreRoomRedisKeys(roomId: string) {
   const base = gameRoomNamespace("centre", 1, roomId);
@@ -9,8 +9,6 @@ export function centreRoomRedisKeys(roomId: string) {
       `${base}:game:${gameNumber}:replay:${playerId}`,
   };
 }
-
-export const centreRealtimeChannel = (roomId: string) => gameRealtimeChannel("centre", 1, roomId);
 
 export const centreBrowserKeys = {
   invite: (roomId: string) => gameBrowserKey("centre", 1, "room", roomId, "invite"),

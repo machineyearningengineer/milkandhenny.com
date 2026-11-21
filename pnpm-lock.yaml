@@ -122,6 +122,12 @@ importers:
       remark-gfm:
         specifier: ^4.0.1
         version: 4.0.1(supports-color@7.2.0)
+      remark-parse:
+        specifier: 11.0.0
+        version: 11.0.0(supports-color@7.2.0)
+      remark-rehype:
+        specifier: 11.1.2
+        version: 11.1.2
       stripe:
         specifier: ^22.5.0
         version: 22.5.0(@types/node@20.19.43)
@@ -131,6 +137,9 @@ importers:
       torph:
         specifier: 0.0.9
         version: 0.0.9(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      unified:
+        specifier: 11.0.5
+        version: 11.0.5
       web-haptics:
         specifier: 0.0.6
         version: 0.0.6(react-dom@19.2.3(react@19.2.3))(react@19.2.3)

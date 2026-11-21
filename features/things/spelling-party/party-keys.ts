@@ -1,4 +1,4 @@
-import { gameBrowserKey, gameRealtimeChannel, gameRoomNamespace } from "../shared/multiplayer-keys";
+import { gameBrowserKey, gameRoomNamespace } from "../shared/multiplayer-keys";
 
 export function partyRoomRedisKeys(roomId: string) {
   const base = gameRoomNamespace("spelling-party", 2, roomId);
@@ -8,9 +8,6 @@ export function partyRoomRedisKeys(roomId: string) {
     joinReceipt: (joinId: string) => `${base}:join-receipt:${joinId}`,
   };
 }
-
-export const partyRealtimeChannel = (roomId: string) =>
-  gameRealtimeChannel("spelling-party", 2, roomId);
 
 export const partyBrowserKeys = {
   presenterSession: (roomId: string) =>

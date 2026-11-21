@@ -4,8 +4,6 @@ import { describe, expect, it } from "vitest";
 import {
   applyGameCommand,
   gameRandomInt,
-  gameRuleFailure,
-  gameTransition,
   versionGameCommand,
   type GameContext,
 } from "@/features/things/shared/game-engine";
@@ -15,29 +13,6 @@ import {
 } from "@/features/things/shared/game-workflow-services.server";
 
 describe("game engine contract", () => {
-  it("should return state and domain events without adding runtime behavior", () => {
-    const context: GameContext = { now: 42, newId: "action-1", randomValues: [0.25] };
-    const transition = gameTransition(
-      { score: Math.floor(context.randomValues[0] * 4), updatedAt: context.now },
-      [{ id: context.newId, type: "score.changed" }],
-    );
-
-    expect(transition).toEqual({
-      ok: true,
-      value: {
-        state: { score: 1, updatedAt: 42 },
-        events: [{ id: "action-1", type: "score.changed" }],
-      },
-    });
-  });
-
-  it("should represent rule failures as values", () => {
-    expect(gameRuleFailure({ code: "not_your_turn" })).toEqual({
-      ok: false,
-      error: { code: "not_your_turn" },
-    });
-  });
-
   it("should consume supplied randomness deterministically", () => {
     const pick = gameRandomInt({ now: 0, newId: "id", randomValues: [0.1, 0.9] });
 

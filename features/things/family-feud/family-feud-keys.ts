@@ -1,12 +1,9 @@
-import { gameBrowserKey, gameRealtimeChannel, gameRoomNamespace } from "../shared/multiplayer-keys";
+import { gameBrowserKey, gameRoomNamespace } from "../shared/multiplayer-keys";
 
 export function familyFeudRoomRedisKeys(roomId: string) {
   const base = gameRoomNamespace("family-feud", 1, roomId);
   return { state: `${base}:state`, lock: `${base}:lock` };
 }
-
-export const familyFeudRealtimeChannel = (roomId: string) =>
-  gameRealtimeChannel("family-feud", 1, roomId);
 
 export const familyFeudBrowserKeys = {
   presenterSession: (roomId: string) =>

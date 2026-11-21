@@ -71,6 +71,56 @@ describeWithDatabase("Postgres Centre rooms", () => {
     ).toMatchObject({ ok: true });
   });
 
+  it("closes the room when the last racer leaves", async () => {
+    const { roomId, playerId, playerToken } = await createCentreRoom({
+      hostName: "Abel",
+      difficulty: 2,
+      delayedRivals: false,
+    });
+    const seat = { roomId, playerId, playerToken };
+
+    await expect(
+      applyCentreAction({ ...seat, action: { type: "player.leave", actionId: "host-leaves" } }),
+    ).resolves.toMatchObject({ ok: true, accepted: true, snapshot: { phase: "closed" } });
+    await expect(readCentreSnapshot({ ...seat, lastSequence: 0 })).resolves.toMatchObject({
+      ok: false,
+      errorCode: "room_unavailable",
+    });
+  });
+
+  it("starts the countdown when the only unarmed racer leaves", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    const { roomId, playerId, playerToken } = await createCentreRoom({
+      hostName: "Abel",
+      difficulty: 2,
+      delayedRivals: false,
+    });
+    const host = { roomId, playerId, playerToken };
+    const guest = await joinCentreRoom({ roomId, name: "Maya" });
+    if (!guest.ok) throw new Error(guest.error);
+    await expect(
+      applyCentreAction({ ...host, action: { type: "game.start" } }),
+    ).resolves.toMatchObject({
+      accepted: true,
+    });
+    await expect(
+      applyCentreAction({ ...host, action: { type: "arming.set", armed: true } }),
+    ).resolves.toMatchObject({ accepted: true, snapshot: { phase: "arming" } });
+
+    await expect(
+      applyCentreAction({
+        roomId,
+        playerId: guest.playerId,
+        playerToken: guest.playerToken,
+        action: { type: "player.leave", actionId: "guest-leaves" },
+      }),
+    ).resolves.toMatchObject({ accepted: true, snapshot: { phase: "countdown" } });
+    await expect(readCentreSnapshot({ ...host, lastSequence: 0 })).resolves.toMatchObject({
+      ok: true,
+      snapshot: { phase: "countdown", course: { startsAt: expect.any(Number) } },
+    });
+  });
+
   it("commits a finished result and replay with the room", async () => {
     const room = await createCentreRoom({
       hostName: "Abel",

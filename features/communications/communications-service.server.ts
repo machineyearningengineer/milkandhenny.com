@@ -11,6 +11,7 @@ import {
   setEmailOutboxEffectWake,
 } from "@/lib/platform/email-outbox.server";
 import { log } from "@/lib/platform/logger.server";
+import { transaction } from "@/lib/platform/postgres.server";
 import { BASE_URL } from "@/lib/shared/config";
 import { expandDueCommunicationStages } from "./communication-plans.server";
 import {
@@ -52,7 +53,9 @@ function operation<A>(
 /** Drain the durable Postgres outbox with bounded Effect-owned delivery concurrency. */
 function drain(email: typeof EmailProviderService.Service) {
   return Effect.gen(function* () {
-    let handled = yield* operation("expire_email", () => expireUndeliverableEmailMessages());
+    let handled = yield* operation("expire_email", () =>
+      transaction(expireUndeliverableEmailMessages),
+    );
     for (;;) {
       const rows = yield* operation("claim_email", () => claimEmailOutboxBatch());
       if (rows.length === 0) return handled;
