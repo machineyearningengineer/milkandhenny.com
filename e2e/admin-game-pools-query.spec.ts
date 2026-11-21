@@ -5,7 +5,6 @@ import { waitForAppHydration } from "./support/multiplayer";
 
 test("game entrance catalogue hydrates without replacing an unsaved draft", async ({ page }) => {
   const databaseUrl = process.env.TEST_DATABASE_URL;
-  process.env.DATABASE_URL = databaseUrl;
   const database = new Pool({ connectionString: databaseUrl });
   const pools = await import("@/features/things/pool/store.server");
   const entrance = await pools.createGamePoolEntrance({

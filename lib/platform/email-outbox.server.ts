@@ -79,7 +79,7 @@ export async function suppressEmailRecipient(
        set recipient_hint = excluded.recipient_hint,
            reason = excluded.reason,
            provider_message_id = excluded.provider_message_id,
-           last_occurred_at = excluded.last_occurred_at,
+           last_occurred_at = greatest(email_suppressions.last_occurred_at, excluded.last_occurred_at),
            updated_at = now()
        where (excluded.reason = 'complained' and email_suppressions.reason = 'bounced')
           or (excluded.reason = email_suppressions.reason

@@ -356,6 +356,15 @@ describeWithDatabase("email outbox (postgres)", () => {
     );
     expect(resolved).toEqual([{ status: "resolved", case_status: "resolved" }]);
 
+    const latestBounce = new Date("2026-08-30T20:42:30.000Z");
+    await recordEmailDeliveryFeedback({
+      eventId: "self-heal-newer-bounce",
+      type: "bounced",
+      occurredAt: latestBounce,
+      providerMessageId: "provider-self-heal",
+      recipients: [recipient],
+      suppressRecipient: true,
+    });
     await recordEmailDeliveryFeedback({
       eventId: "self-heal-complaint",
       type: "complained",
@@ -378,11 +387,11 @@ describeWithDatabase("email outbox (postgres)", () => {
       providerMessageId: "provider-self-heal",
       recipients: [recipient],
     });
-    const complaint = await query<{ reason: string }>(
-      `select reason from email_suppressions where recipient_hash = $1`,
+    const complaint = await query<{ reason: string; last_occurred_at: Date }>(
+      `select reason, last_occurred_at from email_suppressions where recipient_hash = $1`,
       [recipientHash],
     );
-    expect(complaint).toEqual([{ reason: "complained" }]);
+    expect(complaint).toEqual([{ reason: "complained", last_occurred_at: latestBounce }]);
   });
 
   it("corrects one clear ticket-domain typo and queues one replacement", async () => {

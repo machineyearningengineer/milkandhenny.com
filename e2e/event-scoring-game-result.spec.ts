@@ -7,7 +7,6 @@ test("historical result corrections preserve the ledger without reopening public
   page,
 }) => {
   test.setTimeout(120_000);
-  process.env.DATABASE_URL = databaseUrl;
   process.env.AUTH_SECRET ??= "playwright-auth-secret-at-least-thirty-two-characters";
   const suffix = Date.now().toString(36);
   const eventSlug = `game-score-${suffix}`;

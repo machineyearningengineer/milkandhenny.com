@@ -11,7 +11,6 @@ for (const game of GAME_SETTINGS_GAMES)
     browser,
   }, testInfo) => {
     test.setTimeout(120_000);
-    process.env.DATABASE_URL = process.env.TEST_DATABASE_URL;
     const pools = await import("@/features/things/pool/store.server");
     const actionId = `recovery:${game}:${Date.now()}`;
     const entrance = await pools.createGamePoolEntrance({

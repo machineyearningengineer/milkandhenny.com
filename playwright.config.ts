@@ -4,8 +4,9 @@ import { testDatabaseUrl } from "./__tests__/helpers/postgres-config";
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:4173";
 const webPort = new URL(baseURL).port || "4173";
 const testDatabase = testDatabaseUrl();
-// Specs that set up database fixtures run in the Playwright process, not the web server.
-process.env.TEST_DATABASE_URL ??= testDatabase;
+// Fixture workers import app repositories as well as connecting directly.
+process.env.TEST_DATABASE_URL = testDatabase;
+process.env.DATABASE_URL = testDatabase;
 const redisRestURL = process.env.PLAYWRIGHT_REDIS_REST_URL ?? "http://127.0.0.1:56380";
 process.env.PLAYWRIGHT_REDIS_REST_URL = redisRestURL;
 // Browser workers and the app server must select the same persistence fixtures.
@@ -51,7 +52,6 @@ export default defineConfig({
       timeout: 120_000,
       env: {
         ...process.env,
-        DATABASE_URL: testDatabase,
         ...fixtureStores,
         REDIS_REST_URL: redisRestURL,
         REDIS_REST_TOKEN: "local-browser-test",
