@@ -6,8 +6,7 @@ import { waitForAppHydration } from "./support/multiplayer";
 test("admin inbox notification hydrates into the workspace", async ({ page }) => {
   test.setTimeout(120_000);
   const pool = new Pool({
-    connectionString:
-      process.env.TEST_DATABASE_URL ?? "postgres://postgres:test@127.0.0.1:55432/mah_test",
+    connectionString: process.env.TEST_DATABASE_URL,
   });
   const sourceId = randomUUID();
   const notificationId = randomUUID();
@@ -58,8 +57,7 @@ test("admin inbox notification hydrates into the workspace", async ({ page }) =>
 test("a people deep link renders the searched identity from the route query", async ({ page }) => {
   test.setTimeout(120_000);
   const pool = new Pool({
-    connectionString:
-      process.env.TEST_DATABASE_URL ?? "postgres://postgres:test@127.0.0.1:55432/mah_test",
+    connectionString: process.env.TEST_DATABASE_URL,
   });
   const personId = randomUUID();
   try {

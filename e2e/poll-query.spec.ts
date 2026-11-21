@@ -8,8 +8,7 @@ test("server-renders a poll, records a vote, and restores the device view", asyn
   request,
 }) => {
   const database = new Pool({
-    connectionString:
-      process.env.TEST_DATABASE_URL ?? "postgres://postgres:test@127.0.0.1:55432/mah_test",
+    connectionString: process.env.TEST_DATABASE_URL,
   });
   const id = randomUUID();
   const slug = `query-poll-${id.slice(0, 8)}`;

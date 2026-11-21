@@ -1,4 +1,4 @@
-import { gameBrowserKey, gameRealtimeChannel, gameRoomNamespace } from "../shared/multiplayer-keys";
+import { gameBrowserKey, gameRoomNamespace } from "../shared/multiplayer-keys";
 import type { RemoteGameKind } from "./types";
 
 export function pairedGameRoomRedisKeys(roomId: string) {
@@ -18,9 +18,6 @@ export function pairedGameRoomRedisKeys(roomId: string) {
     commandSequence: `${base}:sequence:commands`,
   };
 }
-
-export const pairedGameRealtimeChannel = (roomId: string) =>
-  gameRealtimeChannel("remote", 3, roomId);
 
 export const remoteBrowserKeys = {
   hostSession: (game: RemoteGameKind) => gameBrowserKey("remote", 3, "host", game, "session"),

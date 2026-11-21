@@ -1,3 +1,4 @@
+import { eventsOperation } from "@/features/events/events-operation.server";
 import { configurationActions } from "./configuration.server";
 import { discoveryActions } from "./discoveries.server";
 import { identityActions } from "./identity.server";
@@ -15,12 +16,19 @@ const ACTIONS: AdminScoringActionHandlers = {
   ...identityActions,
 };
 
-export async function runAdminScoringAction(
-  action: string | undefined,
-  context: AdminScoringActionContext,
-): Promise<Response> {
-  const handler = action ? ACTIONS[action] : undefined;
-  return handler
-    ? handler(context)
-    : Response.json({ error: "Unknown scoring action" }, { status: 400 });
+export function adminScoringAction(action: string | undefined, context: AdminScoringActionContext) {
+  return eventsOperation(
+    {
+      domain: "event-scoring",
+      operation: "admin_action",
+      kind: "idempotent-mutation",
+      timeoutMs: 45_000,
+    },
+    async () => {
+      const handler = action && Object.hasOwn(ACTIONS, action) ? ACTIONS[action] : undefined;
+      return handler
+        ? handler(context)
+        : Response.json({ error: "Unknown scoring action" }, { status: 400 });
+    },
+  );
 }

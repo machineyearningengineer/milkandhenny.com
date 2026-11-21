@@ -1,4 +1,5 @@
 import { Client } from "pg";
+import { assertTestDatabaseName, testDatabaseUrl } from "./__tests__/helpers/postgres-config";
 
 /**
  * Probe for a test Postgres once, before any suite runs.
@@ -8,13 +9,15 @@ import { Client } from "pg";
  * expected to provide one.
  */
 export default async function globalSetup() {
-  const connectionString =
-    process.env.TEST_DATABASE_URL ?? "postgres://postgres:test@127.0.0.1:55432/mah_test";
+  const connectionString = testDatabaseUrl();
 
   const client = new Client({ connectionString, connectionTimeoutMillis: 2_000 });
   try {
     await client.connect();
-    await client.query("select 1");
+    const { rows } = await client.query<{ database: string }>(
+      "select current_database() as database",
+    );
+    assertTestDatabaseName(rows[0].database);
     process.env.MAH_TEST_DB_READY = "1";
     process.env.TEST_DATABASE_URL = connectionString;
   } catch (cause) {

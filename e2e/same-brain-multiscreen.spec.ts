@@ -10,8 +10,6 @@ test("keeps three Same Brain roles isolated through join, answer, refresh, and r
   browser,
 }, testInfo) => {
   test.setTimeout(180_000);
-  process.env.DATABASE_URL ??=
-    process.env.TEST_DATABASE_URL ?? "postgres://postgres:test@127.0.0.1:55432/mah_test";
   const configuredBaseURL = testInfo.project.use.baseURL;
   if (typeof configuredBaseURL !== "string") throw new Error("Playwright baseURL is required");
   const pools = await import("@/features/things/pool/store.server");

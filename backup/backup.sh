@@ -16,7 +16,7 @@ set -Eeuo pipefail
 : "${DATABASE_URL:?DATABASE_URL is required}"
 output_dir=""
 if [[ "${1:-}" == "--no-upload" ]]; then
-  output_dir="${2:?--no-upload needs an output directory}"
+  output_dir="$(CDPATH= cd -- "${2:?--no-upload needs an output directory}" && pwd -P)"
 else
   : "${BACKUP_DROP_URL:?BACKUP_DROP_URL is required}"
   : "${BACKUP_DROP_TOKEN:?BACKUP_DROP_TOKEN is required}"

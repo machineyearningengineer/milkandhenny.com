@@ -8,6 +8,7 @@ import {
   MULTIPLAYER_REALTIME_LIMITS,
   MULTIPLAYER_SOCKET_CLOSE,
 } from "./multiplayer-realtime";
+import { gameRealtimeChannel } from "./multiplayer-keys";
 import { runMultiplayerEffect } from "./multiplayer-runtime.server";
 import { MultiplayerRealtimeBackplane } from "./multiplayer-realtime-backplane.server";
 import { MultiplayerLifecycle } from "./multiplayer-lifecycle.server";
@@ -23,7 +24,6 @@ interface MultiplayerWakeSession {
 
 interface MultiplayerWakeHandlerOptions<Session extends MultiplayerWakeSession> {
   authorize: (hello: Record<string, unknown>) => Promise<Session | null>;
-  channel: (roomId: string) => string;
   game: MultiplayerGame;
   wakeMessage?: (session: Session) => Record<string, string>;
   /** Optional feature-owned cosmetic relay. Durable game commands never use this lane. */
@@ -69,7 +69,7 @@ export function createMultiplayerWakeHandler<Session extends MultiplayerWakeSess
   // event; the timestamp lets the idle sweep evict peers whose close
   // handshake never completes, so the map cannot grow without bound.
   const terminatedPeers = new Map<string, number>();
-  const channelFor = (session: Session) => options.channel(session.roomId);
+  const channelFor = (session: Session) => gameRealtimeChannel(options.game, session.roomId);
   const wakeFor = (session: Session) =>
     JSON.stringify(options.wakeMessage?.(session) ?? { type: "wake" });
   const forget = (peer: { id: string }) => {
@@ -323,6 +323,7 @@ export function createMultiplayerWakeHandler<Session extends MultiplayerWakeSess
         try {
           session = await options.authorize(payload);
         } catch (error) {
+          if (!helloInFlight.has(peer.id)) return;
           log.warn("things.multiplayer", "Realtime authorization unavailable", {
             error: error instanceof Error ? error.message : String(error),
             game: options.game,
@@ -337,7 +338,7 @@ export function createMultiplayerWakeHandler<Session extends MultiplayerWakeSess
           );
           return;
         }
-        if (terminatedPeers.has(peer.id)) return;
+        if (!helloInFlight.has(peer.id)) return;
         if (!session) {
           terminate(peer, MULTIPLAYER_SOCKET_CLOSE.policyViolation, "unauthorized", "unauthorized");
           return;
@@ -374,6 +375,7 @@ export function createMultiplayerWakeHandler<Session extends MultiplayerWakeSess
         await record((telemetry) =>
           telemetry.socketOpened(options.game, wasPending, payload.reconnect === "1"),
         );
+        if (connections.get(peer.id)?.peer !== peer) return;
         peer.send(JSON.stringify({ type: "ready" }));
         await publishWake(session);
         return;

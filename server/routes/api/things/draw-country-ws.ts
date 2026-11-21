@@ -1,5 +1,4 @@
 import { authorizeDrawCountrySocket } from "@/features/things/draw-country/draw-country-room.server";
-import { drawCountryRealtimeChannel } from "@/features/things/draw-country/draw-country-keys";
 import { createMultiplayerWakeHandler } from "@/features/things/shared/multiplayer-wake-handler.server";
 
 interface DrawCountrySession {
@@ -8,7 +7,6 @@ interface DrawCountrySession {
 }
 
 export default createMultiplayerWakeHandler<DrawCountrySession>({
-  channel: drawCountryRealtimeChannel,
   game: "draw-country",
   async authorize(payload) {
     const roomId = typeof payload.roomId === "string" ? payload.roomId : "";

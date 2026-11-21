@@ -1,4 +1,4 @@
-import { gameBrowserKey, gameRealtimeChannel, gameRoomNamespace } from "../shared/multiplayer-keys";
+import { gameBrowserKey, gameRoomNamespace } from "../shared/multiplayer-keys";
 
 export function liarsRoomRedisKeys(roomId: string) {
   const base = gameRoomNamespace("liars", 1, roomId);
@@ -8,8 +8,6 @@ export function liarsRoomRedisKeys(roomId: string) {
     joinReceipt: (joinId: string) => `${base}:join-receipt:${joinId}`,
   };
 }
-
-export const liarsRealtimeChannel = (roomId: string) => gameRealtimeChannel("liars", 1, roomId);
 
 export const liarsBrowserKeys = {
   hostSession: (roomId: string) => gameBrowserKey("liars", 1, "room", roomId, "host-session"),

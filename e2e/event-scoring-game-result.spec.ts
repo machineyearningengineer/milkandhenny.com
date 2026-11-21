@@ -1,14 +1,12 @@
 import { expect, test } from "@playwright/test";
 import { Pool } from "pg";
 
-const databaseUrl =
-  process.env.TEST_DATABASE_URL ?? "postgres://postgres:test@127.0.0.1:55432/mah_test";
+const databaseUrl = process.env.TEST_DATABASE_URL;
 
 test("historical result corrections preserve the ledger without reopening public points", async ({
   page,
 }) => {
   test.setTimeout(120_000);
-  process.env.DATABASE_URL = databaseUrl;
   process.env.AUTH_SECRET ??= "playwright-auth-secret-at-least-thirty-two-characters";
   const suffix = Date.now().toString(36);
   const eventSlug = `game-score-${suffix}`;

@@ -1,4 +1,3 @@
-import { familyFeudRealtimeChannel } from "@/features/things/family-feud/family-feud-keys";
 import { authorizeFamilyFeudSocket } from "@/features/things/family-feud/family-feud-room.server";
 import type { FamilyFeudViewerRole } from "@/features/things/family-feud/types";
 import { createMultiplayerWakeHandler } from "@/features/things/shared/multiplayer-wake-handler.server";
@@ -9,7 +8,6 @@ interface FamilyFeudRealtimeSession {
 }
 
 export default createMultiplayerWakeHandler<FamilyFeudRealtimeSession>({
-  channel: familyFeudRealtimeChannel,
   game: "family-feud",
   async authorize(payload) {
     const roomId = typeof payload.roomId === "string" ? payload.roomId : "";

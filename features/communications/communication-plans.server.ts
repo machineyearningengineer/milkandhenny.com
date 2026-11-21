@@ -1,6 +1,11 @@
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 
-import { enqueueEmail } from "@/lib/platform/email-outbox.server";
+import {
+  enqueueEmail,
+  enqueueEmailInTransaction,
+  hashEmailRecipient,
+  wakeEmailOutbox,
+} from "@/lib/platform/email-outbox.server";
 import { query, transaction } from "@/lib/platform/postgres.server";
 import { BASE_URL, getBaseUrlForRequest } from "@/lib/shared/config";
 import { buildAppUrl } from "@/lib/shared/app-url";
@@ -85,10 +90,6 @@ export type CommunicationTemplate = {
   archivedAt: string | null;
   updatedAt: string;
 };
-
-function hashEmail(email: string): string {
-  return createHash("sha256").update(email.trim().toLowerCase()).digest("hex");
-}
 
 function iso(value: Date | string | null): string | null {
   return value ? new Date(value).toISOString() : null;
@@ -1025,7 +1026,11 @@ export async function sendCommunicationPlanTest(
       context,
       origin,
       media: stage.media,
-      source: { sourceType: "test", sourceId: stage.id, recipientHash: hashEmail(testEmail) },
+      source: {
+        sourceType: "test",
+        sourceId: stage.id,
+        recipientHash: hashEmailRecipient(testEmail),
+      },
     });
     const rendered = renderCommunicationMessage({
       kind: stage.kind,
@@ -1101,7 +1106,7 @@ async function recipientsForStage(
   for (const ticket of tickets) {
     if (ticket.status !== "valid" || !ticket.email) continue;
     const email = ticket.email.trim().toLowerCase();
-    const emailHash = hashEmail(email);
+    const emailHash = hashEmailRecipient(email);
     const existing = recipients.get(emailHash);
     if (!existing) {
       recipients.set(emailHash, {
@@ -1330,42 +1335,60 @@ async function fanOutClaimedStages(
         context,
         trackingLinks,
       });
-      const result = await enqueueEmail(
-        {
-          channel: "communications",
-          to: recipient.email,
-          subject: rendered.subject,
-          text: rendered.text,
-          html: rendered.html,
-        },
-        {
-          idempotencyKey: `communication-stage:${stage.id}:${recipient.emailHash}`,
-          kind: "communication-stage",
-          source: "scheduled",
-          context: {
-            eventSlug: event.slug,
-            communicationId: stage.id,
-            ...(stageSendAt && recipient.issuedAt > stageSendAt
-              ? { deliveryReason: "late-join-catch-up" as const }
-              : {}),
+      const linked = await transaction(async (client) => {
+        const result = await enqueueEmailInTransaction(
+          client,
+          {
+            channel: "communications",
+            to: recipient.email,
+            subject: rendered.subject,
+            text: rendered.text,
+            html: rendered.html,
           },
-          communicationId: stage.id,
-        },
-      );
-      if (result.ok) {
-        queued += 1;
-        stageQueued += 1;
-        await query(
-          `update communication_stage_deliveries
-              set status = 'queued', outbox_id = $3, updated_at = now()
-            where stage_id = $1 and email_hash = $2`,
+          {
+            idempotencyKey: `communication-stage:${stage.id}:${recipient.emailHash}`,
+            kind: "communication-stage",
+            source: "scheduled",
+            context: {
+              eventSlug: event.slug,
+              communicationId: stage.id,
+              ...(stageSendAt && recipient.issuedAt > stageSendAt
+                ? { deliveryReason: "late-join-catch-up" as const }
+                : {}),
+            },
+            communicationId: stage.id,
+          },
+        );
+        if (!result.ok) {
+          await client.query(
+            `update communication_stage_deliveries
+                set status = 'failed', updated_at = now()
+              where stage_id = $1 and email_hash = $2 and outbox_id is null`,
+            [stage.id, recipient.emailHash],
+          );
+          return false;
+        }
+        const link = await client.query(
+          `update communication_stage_deliveries as delivery
+              set outbox_id = outbox.id,
+                  status = coalesce(outbox.provider_delivery_status, case outbox.status
+                    when 'accepted' then 'accepted'
+                    when 'failed' then 'failed'
+                    when 'cancelled' then 'failed'
+                    else 'queued'
+                  end),
+                  updated_at = now()
+             from email_outbox as outbox
+            where delivery.stage_id = $1 and delivery.email_hash = $2
+              and delivery.outbox_id is null and outbox.id = $3`,
           [stage.id, recipient.emailHash, result.id],
         );
-      } else {
-        await query(
-          `update communication_stage_deliveries set status = 'failed', updated_at = now() where stage_id = $1 and email_hash = $2`,
-          [stage.id, recipient.emailHash],
-        );
+        return link.rowCount === 1;
+      });
+      if (linked) {
+        stageQueued += 1;
+        queued += 1;
+        wakeEmailOutbox();
       }
     }
     await query(

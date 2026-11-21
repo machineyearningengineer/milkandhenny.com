@@ -452,6 +452,11 @@ function startCourse(room: RoomState, seed = randomSeed(), now = Date.now()) {
 }
 
 function advance(room: RoomState, now = Date.now()) {
+  if (room.phase === "arming" && room.course && activePlayers(room).every(({ armed }) => armed)) {
+    room.course.startsAt = now + COUNTDOWN_MS;
+    room.phase = "countdown";
+    changed(room, now);
+  }
   if (room.phase === "countdown" && room.course?.startsAt && now >= room.course.startsAt) {
     room.phase = "racing";
     changed(room, now);
@@ -695,6 +700,7 @@ export async function applyCentreAction(
             authenticated.withdrawn = true;
             if (activePlayers(room).length === 0) room.phase = "closed";
             changed(room, now);
+            advance(room, now);
             return accept();
           }
           const player = validPlayer(room, input.playerId, input.playerToken);
@@ -749,11 +755,7 @@ export async function applyCentreAction(
               player.armed = action.armed;
               changed(room, now);
             }
-            if (activePlayers(room).every(({ armed }) => armed) && room.course) {
-              room.course.startsAt = now + COUNTDOWN_MS;
-              room.phase = "countdown";
-              changed(room, now);
-            }
+            advance(room, now);
             return accept(player.id);
           }
           if (action.type === "race.finish") {

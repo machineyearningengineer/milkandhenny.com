@@ -9,7 +9,7 @@ import { makeGameContext } from "./game-workflow-services.server";
 import { gameRealtimeChannel } from "./multiplayer-keys";
 import { MultiplayerRealtimeBackplane } from "./multiplayer-realtime-backplane.server";
 import { MultiplayerTelemetry } from "./multiplayer-telemetry.server";
-import { MULTIPLAYER_GAME_REGISTRY, type MultiplayerGame } from "./multiplayer-telemetry";
+import type { MultiplayerGame } from "./multiplayer-telemetry";
 
 interface MultiplayerOperationOptions {
   game: MultiplayerGame;
@@ -71,9 +71,8 @@ export function multiplayerOperation<A>(
             yield* telemetry.recordReconciliation(options.game, durationMs);
           if (options.wakeRoomId && wakeWhen(result)) {
             const backplane = yield* MultiplayerRealtimeBackplane;
-            const version = Number(MULTIPLAYER_GAME_REGISTRY[options.game].channelVersion.slice(1));
             yield* backplane.publish(
-              gameRealtimeChannel(options.game, version, options.wakeRoomId),
+              gameRealtimeChannel(options.game, options.wakeRoomId),
               JSON.stringify({ type: "wake" }),
             );
           }

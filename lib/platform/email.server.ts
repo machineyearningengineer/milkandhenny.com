@@ -1,5 +1,10 @@
 import { log } from "./logger.server";
-import type { EmailContext, EmailKind, EmailSource } from "../shared/email-operations";
+import type {
+  EmailChannel,
+  EmailContext,
+  EmailKind,
+  EmailSource,
+} from "../shared/email-operations";
 
 /**
  * Provider-neutral transactional email.
@@ -13,7 +18,7 @@ import type { EmailContext, EmailKind, EmailSource } from "../shared/email-opera
  * someone's entry to an event.
  */
 
-export type EmailChannel = "tickets" | "studio" | "communications" | "access" | "operations";
+export type { EmailChannel } from "../shared/email-operations";
 
 type CloudflareEmailConfig = {
   provider: "cloudflare";

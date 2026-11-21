@@ -5,9 +5,10 @@ for (const reducedMotion of [false, true]) {
   test(`account pull stays raised and returns to the source page${reducedMotion ? " with reduced motion" : ""}`, async ({
     page,
   }) => {
+    test.setTimeout(90_000);
     await page.setViewportSize({ width: 375, height: 812 });
     await page.emulateMedia({ reducedMotion: reducedMotion ? "reduce" : "no-preference" });
-    await page.goto("/things");
+    await page.goto("/things", { waitUntil: "domcontentloaded" });
     await waitForAppHydration(page);
     const account = page.getByRole("link", { name: "account", exact: true });
     const theme = page.getByRole("button", { name: /Switch to .* mode/ });

@@ -73,8 +73,7 @@ test("uses the event timezone and preserves a stale editor's draft", async ({
 }, testInfo) => {
   test.setTimeout(120_000);
   const database = new Pool({
-    connectionString:
-      process.env.TEST_DATABASE_URL ?? "postgres://postgres:test@127.0.0.1:55432/mah_test",
+    connectionString: process.env.TEST_DATABASE_URL,
   });
   const slug = `admin-edit-${Date.now()}`;
   const context = await browser.newContext({
@@ -166,8 +165,7 @@ test("warns and keeps the editor when draft storage is unavailable", async ({ pa
 test("saving a new survey keeps its identity and clears only the saved draft", async ({ page }) => {
   test.setTimeout(120_000);
   const database = new Pool({
-    connectionString:
-      process.env.TEST_DATABASE_URL ?? "postgres://postgres:test@127.0.0.1:55432/mah_test",
+    connectionString: process.env.TEST_DATABASE_URL,
   });
   const slug = `survey-save-${Date.now()}`;
   try {

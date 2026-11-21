@@ -12,10 +12,6 @@ export const DURABLE_WORK_LOG_SCOPE = {
   officialGameResults: "durable_work.official_game_results",
 } as const;
 
-export function durableWorkSnapshot(input: DurableWorkSnapshot): DurableWorkSnapshot {
-  return input;
-}
-
 export function durableWorkBacklogAgeMs(
   snapshot: DurableWorkSnapshot,
   now = Date.now(),

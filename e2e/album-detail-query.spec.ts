@@ -4,8 +4,7 @@ import { waitForAppHydration } from "./support/multiplayer";
 
 test("album and photo pages share a hydrated detail view", async ({ page, request }) => {
   const pool = new Pool({
-    connectionString:
-      process.env.TEST_DATABASE_URL ?? "postgres://postgres:test@127.0.0.1:55432/mah_test",
+    connectionString: process.env.TEST_DATABASE_URL,
   });
   const slug = `query-album-${Date.now()}`;
   const client = await pool.connect();

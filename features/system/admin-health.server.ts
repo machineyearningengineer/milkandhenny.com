@@ -5,7 +5,6 @@ import { describeGamePoolOperations } from "@/features/things/pool/operations.se
 import { describeTransferMediaQueue } from "@/features/transfers/media-queue.server";
 import { log } from "@/lib/platform/logger.server";
 import { describeOfficialGameResultOutbox } from "@/features/game-results/outbox.server";
-import { durableWorkSnapshot } from "./durable-work";
 
 async function inspectTransferMediaQueue() {
   try {
@@ -19,13 +18,13 @@ async function inspectTransferMediaQueue() {
       leased: 0,
       permanentFailures: 0,
       backlogAgeMs: null,
-      durableWork: durableWorkSnapshot({
+      durableWork: {
         available: false,
         pending: 0,
         processing: 0,
         failed: 0,
         oldestPendingAt: null,
-      }),
+      },
       reason: "The media queue could not be inspected.",
     };
   }

@@ -25,7 +25,7 @@ evidence. Do not repeatedly run the full suite while iterating.
 `main`, and manual dispatch. Code changes run `pnpm check`, `pnpm test`,
 `pnpm build`, then the Chromium journeys. CI supplies Postgres, Redis, and media
 tools. Browser runs stop after the first failed test (including its retry) and
-have a fifteen-minute global limit, leaving time to upload failure evidence before
+have a twenty-minute global limit, leaving time to upload failure evidence before
 the job limit. Browser failures retain screenshots and traces for seven days.
 
 Only changes entirely within `README.md`, `AGENTS.md`, Markdown files under
@@ -81,8 +81,11 @@ that crosses module or persistence boundaries:
 
 The tests use the real application code. External services use the local
 fallback or a focused test server where that is the contract being exercised.
-Database suites use the shared Postgres helper and advisory lock so parallel
-Vitest workers cannot reset one another's schema.
+Point `TEST_DATABASE_URL` at a disposable Postgres database named `mah_test`
+or `mah_test_<suffix>`. The runner defaults to the local `mah_test` database.
+Vitest database suites take an advisory lock, rebuild the application schemas
+from migrations, and release the lock when the suite ends. Use a separate
+database for concurrent Vitest and Playwright runs.
 
 Effect service-boundary tests use deterministic Layers or focused adapters. Test pure policy before
 the wrapper, then cover the execution guarantees the workflow actually owns: typed failure,

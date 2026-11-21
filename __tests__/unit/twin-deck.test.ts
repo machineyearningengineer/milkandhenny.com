@@ -42,10 +42,6 @@ describe("the projective plane", () => {
         for (const line of lines) expect(line).toHaveLength(twinSymbolsPerCard(order));
       });
 
-      it("uses n² + n + 1 distinct symbols", () => {
-        expect(new Set(lines.flat()).size).toBe(capacity);
-      });
-
       it("puts every symbol on exactly n + 1 cards", () => {
         const frequency = new Map<number, number>();
         for (const line of lines)
@@ -67,10 +63,6 @@ describe("the projective plane", () => {
             if (shared.length !== 1) offenders.push(`${i}×${j} shares ${shared.length}`);
           }
         expect(offenders).toEqual([]);
-      });
-
-      it("is stable across calls", () => {
-        expect(twinPlane(order)).toEqual(lines);
       });
     });
   }

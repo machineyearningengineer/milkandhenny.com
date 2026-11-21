@@ -89,7 +89,8 @@ export async function query<T extends QueryResultRow>(
   text: string,
   values: readonly unknown[] = [],
 ): Promise<T[]> {
-  currentOperationSignal()?.throwIfAborted();
+  const signal = currentOperationSignal();
+  signal?.throwIfAborted();
   // Keep the deadline local to this checkout. A pool-wide timeout also applies to callers that
   // intentionally hold a session (migrations and advisory locks), while RESET before release keeps
   // the next borrower from inheriting this operation's policy.
@@ -97,8 +98,9 @@ export async function query<T extends QueryResultRow>(
   let discard = false;
   try {
     await client.query(`SET statement_timeout = '${DATABASE_QUERY_TIMEOUT_MS}ms'`);
+    signal?.throwIfAborted();
     const result = await client.query<T>(text, values as unknown[]);
-    currentOperationSignal()?.throwIfAborted();
+    signal?.throwIfAborted();
     return result.rows;
   } finally {
     try {
@@ -126,25 +128,30 @@ export async function queryOne<T extends QueryResultRow>(
  * refunds and capacity all need several writes to land together.
  */
 export async function transaction<T>(fn: (client: PoolClient) => Promise<T>): Promise<T> {
+  const signal = currentOperationSignal();
+  signal?.throwIfAborted();
   const client = await requirePool().connect();
+  let discard = false;
   try {
-    currentOperationSignal()?.throwIfAborted();
+    signal?.throwIfAborted();
     await client.query("BEGIN");
     await client.query(`SET LOCAL statement_timeout = '${DATABASE_QUERY_TIMEOUT_MS}ms'`);
     await client.query(`SET LOCAL lock_timeout = '${DATABASE_LOCK_TIMEOUT_MS}ms'`);
+    signal?.throwIfAborted();
     const result = await fn(client);
-    currentOperationSignal()?.throwIfAborted();
+    signal?.throwIfAborted();
     await client.query("COMMIT");
     return result;
   } catch (error) {
     try {
       await client.query("ROLLBACK");
     } catch (rollbackError) {
+      discard = true;
       log.error("postgres", "Rollback failed", {}, rollbackError);
     }
     throw error;
   } finally {
-    client.release();
+    client.release(discard);
   }
 }
 

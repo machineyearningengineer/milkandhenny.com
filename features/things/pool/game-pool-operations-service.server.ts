@@ -11,9 +11,6 @@ import type { GamePoolAssignment } from "./types";
 import { listGamePoolEntrances } from "./store.server";
 import { gameRealtimeChannel } from "../shared/multiplayer-keys";
 import { MultiplayerRealtimeBackplane } from "../shared/multiplayer-realtime-backplane.server";
-import { MULTIPLAYER_GAME_REGISTRY } from "../shared/multiplayer-telemetry";
-
-const GAME_POOL_VERSION = Number(MULTIPLAYER_GAME_REGISTRY["game-pool"].channelVersion.slice(1));
 
 export class GamePoolOperationError extends Data.TaggedError("GamePoolOperationError")<{
   readonly cause: unknown;
@@ -79,10 +76,7 @@ export class GamePoolOperationsService extends Context.Service<
           withPostgresProvider(postgres.port, () => withRedisProvider(redisClient, run)),
         );
       const publish = (runId: string, message: object) =>
-        backplane.publish(
-          gameRealtimeChannel("game-pool", GAME_POOL_VERSION, runId),
-          JSON.stringify(message),
-        );
+        backplane.publish(gameRealtimeChannel("game-pool", runId), JSON.stringify(message));
       return {
         assign: (input) =>
           Effect.gen(function* () {
