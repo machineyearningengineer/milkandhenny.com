@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Effect } from "effect";
 
 import { requireAdminStepUp, requireAuthWithPayload } from "@/features/auth/auth.server";
+import { adminScoringAction } from "@/features/event-scoring/admin-api/actions.server";
 import { recordBody, stringValue } from "@/features/event-scoring/admin-api/shared";
 import { EventScoringService } from "@/features/event-scoring/event-scoring-service.server";
 import { runEventsEffect } from "@/features/events/events-runtime.server";
@@ -33,14 +34,11 @@ async function handlePOST(request: Request, eventSlug: string) {
     const body = recordBody(await request.json().catch(() => null));
     if (!body) return Response.json({ error: "Invalid request body" }, { status: 400 });
     return await runEventsEffect(
-      Effect.gen(function* () {
-        const scoring = yield* EventScoringService;
-        return yield* scoring.runAdminAction(stringValue(body.action), {
-          request,
-          eventSlug,
-          actorId: auth.actorId ?? "root-owner",
-          body,
-        });
+      adminScoringAction(stringValue(body.action), {
+        request,
+        eventSlug,
+        actorId: auth.actorId ?? "root-owner",
+        body,
       }),
       request.signal,
     );

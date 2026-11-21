@@ -7,8 +7,7 @@ test("public word detail hydrates and private share redirects retain the token",
   request,
 }) => {
   const pool = new Pool({
-    connectionString:
-      process.env.TEST_DATABASE_URL ?? "postgres://postgres:test@127.0.0.1:55432/mah_test",
+    connectionString: process.env.TEST_DATABASE_URL,
   });
   const publicSlug = `query-word-${Date.now()}`;
   const privateSlug = `${publicSlug}-private`;

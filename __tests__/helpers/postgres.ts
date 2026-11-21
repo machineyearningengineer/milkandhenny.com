@@ -18,9 +18,7 @@
  */
 
 import { describe } from "vitest";
-
-export const TEST_DATABASE_URL =
-  process.env.TEST_DATABASE_URL ?? "postgres://postgres:test@127.0.0.1:55432/mah_test";
+import { assertTestDatabaseName, testDatabaseUrl } from "./postgres-config";
 
 export const databaseReady = process.env.MAH_TEST_DB_READY === "1";
 
@@ -43,173 +41,30 @@ let suiteLockClient: {
 } | null = null;
 
 export async function applySchema(): Promise<void> {
-  process.env.DATABASE_URL = TEST_DATABASE_URL;
+  process.env.DATABASE_URL = testDatabaseUrl();
   const { getPool, query } = await import("@/lib/platform/postgres.server");
   const { runMigrations } = await import("@/lib/platform/migrations.server");
 
   const pool = getPool();
   if (pool && !suiteLockClient) {
     const client = await pool.connect();
-    await client.query("select pg_advisory_lock($1)", [TEST_SUITE_LOCK_KEY]);
-    suiteLockClient = client;
+    try {
+      const { rows } = await client.query<{ database: string }>(
+        "select current_database() as database",
+      );
+      assertTestDatabaseName(rows[0].database);
+      await client.query("select pg_advisory_lock($1)", [TEST_SUITE_LOCK_KEY]);
+      suiteLockClient = client;
+    } catch (error) {
+      client.release(true);
+      throw error;
+    }
   }
 
   await query(`
     drop schema if exists legacy_archive cascade;
-    drop table if exists multiplayer_room_action_receipts cascade;
-    drop table if exists multiplayer_game_result_outbox cascade;
-    drop table if exists multiplayer_rooms cascade;
-    drop table if exists transfer_media_job_attempt_outputs cascade;
-    drop table if exists transfer_media_jobs cascade;
-    drop table if exists transfer_append_reservations cascade;
-    drop table if exists transfer_group_members cascade;
-    drop table if exists transfer_groups cascade;
-    drop table if exists transfer_files cascade;
-    drop table if exists transfer_upload_reservations cascade;
-    drop table if exists transfers cascade;
-    drop table if exists media_worker_instances cascade;
-    drop table if exists media_object_operations cascade;
-    drop table if exists word_share_links cascade;
-    drop table if exists word_revisions cascade;
-    drop table if exists words cascade;
-    drop table if exists gallery_album_photos cascade;
-    drop table if exists gallery_albums cascade;
-    drop table if exists best_dressed_codes cascade;
-    drop table if exists best_dressed_legacy_votes cascade;
-    drop table if exists best_dressed_tokens cascade;
-    drop table if exists best_dressed_voters cascade;
-    drop table if exists best_dressed_totals cascade;
-    drop table if exists best_dressed_state cascade;
-    drop table if exists diagnostic_report_receipts cascade;
-    drop table if exists diagnostic_report_rates cascade;
-    drop table if exists diagnostic_legacy_reports cascade;
-    drop table if exists diagnostic_reports cascade;
-    drop table if exists attendee_passkey_ceremonies cascade;
-    drop table if exists auth_cli_codes cascade;
-    drop table if exists auth_cli_requests cascade;
-    drop table if exists attendee_sessions cascade;
-    drop table if exists attendee_session_versions cascade;
-    drop table if exists auth_recent_logins cascade;
-    drop table if exists auth_revoked_tokens cascade;
-    drop table if exists auth_token_sessions cascade;
-    drop table if exists auth_role_token_versions cascade;
-    drop table if exists upload_access_audit cascade;
-    drop table if exists upload_access_window cascade;
-    drop table if exists rate_limit_windows cascade;
-    drop table if exists application_scheduled_jobs cascade;
-    drop table if exists achievement_unlocks cascade;
-    drop table if exists achievement_progress cascade;
-    drop table if exists event_waitlist_inventory cascade;
-    drop table if exists event_waitlist_entries cascade;
-    drop table if exists attendee_operations_audit_events cascade;
-    drop table if exists admin_alert_recipients cascade;
-    drop table if exists admin_notification_reads cascade;
-    drop table if exists admin_notifications cascade;
-    drop table if exists admin_attention_cases cascade;
-    drop table if exists attendee_domain_events cascade;
-    drop table if exists global_admin_grants cascade;
-    drop table if exists ticket_refund_allocations cascade;
-    drop table if exists ticket_return_requests cascade;
-    drop table if exists ticket_transfers cascade;
-    drop table if exists ticket_assignments cascade;
-    drop table if exists attendee_action_links cascade;
-    drop table if exists event_operation_policies cascade;
-    drop table if exists attendee_operation_settings cascade;
-    drop table if exists event_order_managers cascade;
-    drop table if exists event_ticket_identity_claims cascade;
-    drop table if exists event_person_login_challenges cascade;
-    drop table if exists score_operational_events cascade;
-    drop table if exists event_icebreaker_encounters cascade;
-    drop table if exists event_icebreaker_profiles cascade;
-    drop table if exists score_activity_templates cascade;
-    drop table if exists score_prize_finalizations cascade;
-    drop table if exists score_media_links cascade;
-    drop table if exists score_notifications cascade;
-    drop table if exists score_audit_events cascade;
-    drop table if exists score_staff_award_claims cascade;
-    drop table if exists score_staff_devices cascade;
-    drop table if exists score_staff_assignments cascade;
-    drop table if exists event_staff_roles cascade;
-    drop table if exists score_offline_commands cascade;
-    drop table if exists score_offline_reservations cascade;
-    drop table if exists score_anomaly_flags cascade;
-    drop table if exists score_discovery_clues cascade;
-    drop table if exists score_discovery_claims cascade;
-    drop table if exists score_discoveries cascade;
-    drop table if exists score_game_receipts cascade;
-    drop table if exists game_result_group_claims cascade;
-    drop table if exists game_result_group_claim_sessions cascade;
-    drop table if exists official_game_results cascade;
-    drop table if exists event_game_player_links cascade;
-    drop table if exists event_game_score_bindings cascade;
-    drop table if exists event_game_register cascade;
-    drop table if exists score_postings cascade;
-    drop table if exists score_transactions cascade;
-    drop table if exists score_projections cascade;
-    drop table if exists score_pools cascade;
-    drop table if exists score_team_memberships cascade;
-    drop table if exists score_teams cascade;
-    drop table if exists score_activities cascade;
-    drop table if exists event_scoring_settings cascade;
-    drop table if exists event_participant_merges cascade;
-    drop table if exists event_participants cascade;
-    drop table if exists person_game_events cascade;
-    drop table if exists person_game_sessions cascade;
-    drop table if exists hot_and_cold_daily_results cascade;
-    drop table if exists person_recovery_codes cascade;
-    drop table if exists person_totp_authenticators cascade;
-    drop table if exists account_permission_grants cascade;
-    drop table if exists person_passkeys cascade;
-    drop table if exists person_webauthn_profiles cascade;
-    drop table if exists event_person_identifiers cascade;
-    drop table if exists event_people cascade;
-    drop table if exists game_pool_assignment_receipts cascade;
-    drop table if exists game_pool_room_credentials cascade;
-    drop table if exists game_pool_moderation_events cascade;
-    drop table if exists game_pool_assignments cascade;
-    drop table if exists game_pool_rooms cascade;
-    drop table if exists game_pool_runs cascade;
-    drop table if exists game_pool_entrances cascade;
-    drop table if exists email_feedback_events cascade;
-    drop table if exists email_delivery_events cascade;
-    drop table if exists communication_links cascade;
-    drop table if exists poll_votes cascade;
-    drop table if exists polls cascade;
-    drop table if exists survey_responses cascade;
-    drop table if exists survey_invitations cascade;
-    drop table if exists surveys cascade;
-    drop table if exists communication_stage_deliveries cascade;
-    drop table if exists communication_plan_stages cascade;
-    drop table if exists communication_plans cascade;
-    drop table if exists communication_contact_consent_events cascade;
-    drop table if exists communication_templates cascade;
-    drop table if exists communication_messages cascade;
-    drop table if exists communication_contacts cascade;
-    drop table if exists email_suppressions cascade;
-    drop table if exists email_outbox cascade;
-    drop table if exists pitch_audit_events cascade;
-    drop table if exists pitch_platform_settings cascade;
-    drop table if exists site_settings cascade;
-    drop table if exists pitch_commands cascade;
-    drop table if exists pitch_editions cascade;
-    drop table if exists pitch_mutations cascade;
-    drop table if exists pitch_deck_backups cascade;
-    drop table if exists pitch_assets cascade;
-    drop table if exists pitch_access_tokens cascade;
-    drop table if exists pitch_decks cascade;
-    drop table if exists event_drops cascade;
-    drop table if exists guest_requests cascade;
-    drop table if exists scanner_link_devices cascade;
-    drop table if exists scanner_links cascade;
-    drop table if exists checkpoint_usage cascade;
-    drop table if exists checkpoints cascade;
-    drop table if exists ticket_exchange_refunds cascade;
-    drop table if exists ticket_exchanges cascade;
-    drop table if exists checkout_sessions cascade;
-    drop table if exists tickets cascade;
-    drop table if exists ticket_types cascade;
-    drop table if exists events cascade;
-    drop table if exists schema_migrations cascade;
+    drop schema public cascade;
+    create schema public;
   `);
   await runMigrations();
 }

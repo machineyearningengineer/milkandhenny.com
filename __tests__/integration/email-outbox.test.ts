@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import {
   drainEmailOutbox,
   enqueueEmail,
+  enqueueEmailInTransaction,
   hashEmailRecipient,
 } from "@/lib/platform/email-outbox.server";
 import { recordEmailDeliveryEvent } from "@/lib/platform/email-delivery-events.server";
@@ -355,17 +356,25 @@ describeWithDatabase("email outbox (postgres)", () => {
     );
     expect(resolved).toEqual([{ status: "resolved", case_status: "resolved" }]);
 
-    await query(
-      `insert into email_suppressions
-         (recipient_hash,recipient_hint,reason,provider_message_id,first_occurred_at,last_occurred_at)
-       values ($1,'s…@example.com','complained','provider-self-heal',
-               '2026-08-30T20:42:00.000Z','2026-08-30T20:42:00.000Z')`,
-      [recipientHash],
-    );
+    await recordEmailDeliveryFeedback({
+      eventId: "self-heal-complaint",
+      type: "complained",
+      occurredAt: new Date("2026-08-30T20:42:00.000Z"),
+      providerMessageId: "provider-self-heal",
+      recipients: [recipient],
+    });
+    await recordEmailDeliveryFeedback({
+      eventId: "self-heal-bounce-after-complaint",
+      type: "bounced",
+      occurredAt: new Date("2026-08-30T20:43:00.000Z"),
+      providerMessageId: "provider-self-heal",
+      recipients: [recipient],
+      suppressRecipient: true,
+    });
     await recordEmailDeliveryFeedback({
       eventId: "self-heal-after-complaint",
       type: "delivered",
-      occurredAt: new Date("2026-08-30T20:43:00.000Z"),
+      occurredAt: new Date("2026-08-30T20:44:00.000Z"),
       providerMessageId: "provider-self-heal",
       recipients: [recipient],
     });
@@ -539,22 +548,25 @@ describeWithDatabase("email outbox (postgres)", () => {
   });
 
   it("starts retention from a future scheduled delivery, not from queueing", async () => {
-    const notBefore = new Date(Date.now() + 30 * 24 * 60 * 60 * 1_000);
-    await enqueueEmail(
-      {
-        channel: "communications",
-        to: "guest@example.com",
-        subject: "Scheduled event update",
-        text: "See you next month",
-      },
-      {
-        idempotencyKey: "communications:scheduled-retention:guest",
-        kind: "communication",
-        source: "scheduled",
-        notBefore,
-        deliverNow: false,
-      },
-    );
+    const notBefore = new Date(Date.UTC(new Date().getUTCFullYear() + 1, 2, 24));
+    await transaction(async (client) => {
+      await client.query("set local timezone = 'Europe/London'");
+      await enqueueEmailInTransaction(
+        client,
+        {
+          channel: "communications",
+          to: "guest@example.com",
+          subject: "Scheduled event update",
+          text: "See you next month",
+        },
+        {
+          idempotencyKey: "communications:scheduled-retention:guest",
+          kind: "communication",
+          source: "scheduled",
+          notBefore,
+        },
+      );
+    });
     const rows = await query<{
       next_attempt_at: Date;
       content_expires_at: Date;

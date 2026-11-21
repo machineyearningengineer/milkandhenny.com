@@ -6,8 +6,7 @@ import { waitForAppHydration } from "./support/multiplayer";
 test("admin album catalogue hydrates its first render", async ({ page }) => {
   test.skip(process.env.ALBUM_STORE !== "postgres", "Requires the isolated Postgres album store");
   const database = new Pool({
-    connectionString:
-      process.env.TEST_DATABASE_URL ?? "postgres://postgres:test@127.0.0.1:55432/mah_test",
+    connectionString: process.env.TEST_DATABASE_URL,
   });
   const slug = `admin-query-album-${randomUUID().slice(0, 8)}`;
   try {

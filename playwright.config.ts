@@ -1,9 +1,9 @@
 import { defineConfig, devices } from "@playwright/test";
+import { testDatabaseUrl } from "./__tests__/helpers/postgres-config";
 
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:4173";
 const webPort = new URL(baseURL).port || "4173";
-const testDatabase =
-  process.env.TEST_DATABASE_URL ?? "postgres://postgres:test@127.0.0.1:55432/mah_test";
+const testDatabase = testDatabaseUrl();
 // Specs that set up database fixtures run in the Playwright process, not the web server.
 process.env.TEST_DATABASE_URL ??= testDatabase;
 const redisRestURL = process.env.PLAYWRIGHT_REDIS_REST_URL ?? "http://127.0.0.1:56380";

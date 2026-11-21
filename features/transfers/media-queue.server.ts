@@ -1,7 +1,6 @@
 import { createHash } from "node:crypto";
 import type Redis from "ioredis";
 import { getMediaProcessorMode } from "@/features/media/config.server";
-import { durableWorkSnapshot } from "@/features/system/durable-work";
 import { getCommandRedis } from "@/lib/platform/redis-direct.server";
 import { getRedis } from "@/lib/platform/redis.server";
 import {
@@ -236,13 +235,13 @@ async function describeTransferMediaQueue() {
       leased: 0,
       permanentFailures: 0,
       backlogAgeMs: null,
-      durableWork: durableWorkSnapshot({
+      durableWork: {
         available: false,
         pending: 0,
         processing: 0,
         failed: 0,
         oldestPendingAt: null,
-      }),
+      },
     };
   if (process.env.TRANSFER_MEDIA_JOB_STORE === "postgres") {
     const snapshot = await getPostgresTransferMediaQueueSnapshot();
@@ -255,13 +254,13 @@ async function describeTransferMediaQueue() {
       backlogAgeMs: snapshot.oldestPendingAt
         ? Math.max(0, Date.now() - Date.parse(snapshot.oldestPendingAt))
         : null,
-      durableWork: durableWorkSnapshot({
+      durableWork: {
         available: true,
         pending: snapshot.pending,
         processing: snapshot.claimed,
         failed: snapshot.dead,
         oldestPendingAt: snapshot.oldestPendingAt,
-      }),
+      },
     };
   }
   const redis = getCommandRedis();
@@ -282,13 +281,13 @@ async function describeTransferMediaQueue() {
     permanentFailures: deadJobs.length,
     oldestPermanentFailureAt: oldestDead?.enqueuedAt ?? null,
     backlogAgeMs: oldestPendingAt ? Math.max(0, Date.now() - Date.parse(oldestPendingAt)) : null,
-    durableWork: durableWorkSnapshot({
+    durableWork: {
       available: true,
       pending: queuedJobs.length,
       processing: leasedJobs.length,
       failed: deadJobs.length,
       oldestPendingAt,
-    }),
+    },
   };
 }
 

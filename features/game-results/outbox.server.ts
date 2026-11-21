@@ -11,11 +11,7 @@ import { getRedis } from "@/lib/platform/redis.server";
 import { getRuntimeInstanceId } from "@/lib/platform/runtime-metadata.server";
 import { drainPostgresOfficialResults } from "./outbox-postgres.server";
 import type { OfficialGameResultDraft, OfficialGameResultEnvelope } from "./types";
-import {
-  durableWorkSnapshot,
-  DURABLE_WORK_LOG_SCOPE,
-  type DurableWorkSnapshot,
-} from "@/features/system/durable-work";
+import { DURABLE_WORK_LOG_SCOPE, type DurableWorkSnapshot } from "@/features/system/durable-work";
 
 const OUTBOX_PREFIX = "things:official-result-outbox";
 const WAKE_CHANNEL = "game-results:v1:wake";
@@ -256,13 +252,13 @@ export async function describeOfficialGameResultOutbox(): Promise<{
   const redis = getRedis();
   if (!redis)
     return {
-      durableWork: durableWorkSnapshot({
+      durableWork: {
         available: false,
         pending: 0,
         processing: 0,
         failed: 0,
         oldestPendingAt: null,
-      }),
+      },
     };
   const envelopes: OfficialGameResultEnvelope[] = [];
   let cursor = "0";
@@ -285,12 +281,12 @@ export async function describeOfficialGameResultOutbox(): Promise<{
     return oldest;
   }, null);
   return {
-    durableWork: durableWorkSnapshot({
+    durableWork: {
       available: true,
       pending: envelopes.length,
       processing: 0,
       failed: 0,
       oldestPendingAt,
-    }),
+    },
   };
 }

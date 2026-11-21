@@ -1,5 +1,6 @@
 "use client";
 
+import { formatCompactBytes } from "@/lib/shared/format";
 import { Disclosure, DisclosureSummary } from "@/components/Disclosure";
 import { useState } from "react";
 
@@ -31,13 +32,6 @@ type TransferRecoveryPanelProps = {
 
 function fileCountLabel(count: number): string {
   return `${count} file${count === 1 ? "" : "s"}`;
-}
-
-function formatBytes(bytes: number): string {
-  if (bytes === 0) return "0 b";
-  const units = ["b", "kb", "mb", "gb"];
-  const unit = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
-  return `${Number((bytes / 1024 ** unit).toFixed(1))} ${units[unit]}`;
 }
 
 function formatCheckpointTime(value: number): string {
@@ -144,8 +138,8 @@ export function TransferRecoveryPanel({
           <div className="flex items-center justify-between gap-3 font-mono text-micro">
             <span>
               {uploadedFileCount === 0
-                ? `no complete files yet · ${formatBytes(totalBytes)} still to send`
-                : `${uploadedFileCount} of ${expectedCount} files complete · ${formatBytes(uploadedBytes)} stored`}
+                ? `no complete files yet · ${formatCompactBytes(totalBytes)} still to send`
+                : `${uploadedFileCount} of ${expectedCount} files complete · ${formatCompactBytes(uploadedBytes)} stored`}
             </span>
             <span className="shrink-0 theme-muted">{completedPercent}%</span>
           </div>
@@ -176,7 +170,7 @@ export function TransferRecoveryPanel({
             {fileRows.slice(0, 20).map((file, index) => (
               <li key={`${file.name}-${file.size}-${index}`} className="flex gap-3">
                 <span className="min-w-0 flex-1 break-all">{file.name}</span>
-                <span className="shrink-0 theme-faint">{formatBytes(file.size)}</span>
+                <span className="shrink-0 theme-faint">{formatCompactBytes(file.size)}</span>
                 <span className="w-16 shrink-0 text-right">
                   {checkStatus === "checking"
                     ? "checking"

@@ -5,13 +5,7 @@ import { uploadPresignedObject } from "@/lib/client/presigned-upload";
 import type { WordMediaItem } from "../types";
 import { AdminStatus } from "../../components/AdminStatus";
 
-function formatBytes(bytes: number): string {
-  if (!Number.isFinite(bytes) || bytes <= 0) return "0 b";
-  const units = ["b", "kb", "mb", "gb"];
-  const index = Math.min(units.length - 1, Math.floor(Math.log(bytes) / Math.log(1024)));
-  const size = bytes / 1024 ** index;
-  return `${size.toFixed(size >= 10 || index === 0 ? 0 : 1)} ${units[index]}`;
-}
+import { formatBytes } from "../../format";
 
 type WordMediaLibraryProps = {
   selectedSlug: string;

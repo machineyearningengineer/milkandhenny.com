@@ -5,7 +5,11 @@ import { getEvent } from "@/features/events/store.server";
 import { sendRefundEmail, sendTicketEmail } from "@/features/tickets/email.server";
 import { listTicketsForOrder, updateTicketOrderEmail } from "@/features/tickets/store.server";
 import { assessEmailAddress, normaliseEmail } from "@/lib/shared/email-address";
-import { hashEmailRecipient, wakeEmailOutbox } from "@/lib/platform/email-outbox.server";
+import {
+  expireUndeliverableEmailMessages,
+  hashEmailRecipient,
+  wakeEmailOutbox,
+} from "@/lib/platform/email-outbox.server";
 import { describeEmailCapability } from "@/lib/platform/email.server";
 import { isDatabaseConfigured, query, queryOne, transaction } from "@/lib/platform/postgres.server";
 import {
@@ -455,10 +459,17 @@ export async function retryEmailNow(id: string): Promise<void> {
 
 export async function cancelQueuedEmail(id: string): Promise<void> {
   const row = await queryOne<{ id: string }>(
-    `update email_outbox
-        set status = 'cancelled', message = null, cancelled_at = now(), updated_at = now()
-      where id = $1 and status = 'pending'
-      returning id`,
+    `with cancelled as (
+       update email_outbox
+          set status = 'cancelled', message = null, cancelled_at = now(), updated_at = now()
+        where id = $1 and status = 'pending'
+        returning id
+     ), failed_stage as (
+       update communication_stage_deliveries
+          set status = 'failed', updated_at = now()
+        where outbox_id in (select id from cancelled) and status = 'queued'
+     )
+     select id from cancelled`,
     [id],
   );
   if (!row)
@@ -466,12 +477,6 @@ export async function cancelQueuedEmail(id: string): Promise<void> {
       409,
       "Only a message that has not started sending can be cancelled",
     );
-  await query(
-    `update communication_stage_deliveries
-        set status = 'failed', updated_at = now()
-      where outbox_id = $1 and status = 'queued'`,
-    [id],
-  );
 }
 
 export async function resendEmailFromLedger(
@@ -651,31 +656,10 @@ export async function correctTicketRecipientAndResend(
 
 export async function cleanupEmailOperations(): Promise<EmailCleanupResult> {
   return transaction(async (client) => {
-    const expired = await client.query<{ id: string }>(
-      `update email_outbox
-          set status = 'failed', message = null, locked_until = null,
-              provider_status = 408,
-              last_error = case
-                when attempts >= $1 then 'Delivery stopped after the retry limit'
-                else 'Delivery window expired before the provider accepted the message'
-              end,
-              failed_at = now(), updated_at = now()
-        where (status = 'pending' or (status = 'processing' and locked_until < now()))
-          and (attempts >= $1 or content_expires_at <= now())
-        returning id`,
-      [EMAIL_MAX_DELIVERY_ATTEMPTS],
-    );
-    if (expired.rows.length > 0) {
-      await client.query(
-        `update communication_stage_deliveries
-            set status = 'failed', updated_at = now()
-          where outbox_id = any($1::uuid[]) and status in ('queued', 'accepted')`,
-        [expired.rows.map((row) => row.id)],
-      );
-    }
+    const expiredMessages = await expireUndeliverableEmailMessages(client);
     const deliveryEvents = await client.query(
       `delete from email_delivery_events
-        where received_at < now() - ($1 * interval '1 day')`,
+        where received_at < now() - ($1 * interval '24 hours')`,
       [EMAIL_DELIVERY_EVENT_RETENTION_DAYS],
     );
     const ledger = await client.query(
@@ -683,7 +667,7 @@ export async function cleanupEmailOperations(): Promise<EmailCleanupResult> {
         where status in ('accepted', 'failed', 'cancelled') and retain_until <= now()`,
     );
     return {
-      expiredMessages: expired.rowCount ?? 0,
+      expiredMessages,
       deletedLedgerEntries: ledger.rowCount ?? 0,
       deletedDeliveryEvents: deliveryEvents.rowCount ?? 0,
     };

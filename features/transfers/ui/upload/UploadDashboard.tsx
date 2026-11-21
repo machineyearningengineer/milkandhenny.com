@@ -1,5 +1,6 @@
 "use client";
 
+import { formatCompactBytes } from "@/lib/shared/format";
 import { AppSelect } from "@/components/AppSelect";
 import { useState, useRef, useCallback, useEffect, useDeferredValue } from "react";
 import { Link } from "@tanstack/react-router";
@@ -56,14 +57,6 @@ type UploadProgress = {
 };
 
 /* ─── Helpers ─── */
-
-function formatBytes(bytes: number): string {
-  if (bytes === 0) return "0 b";
-  const k = 1024;
-  const sizes = ["b", "kb", "mb", "gb"];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
-}
 
 const EXPIRY_OPTIONS = [
   { value: "30m", label: "30 minutes" },
@@ -207,7 +200,7 @@ function getUploadProgressLabel(progress: UploadProgress): string {
     return `processing previews for ${progress.total} file${progress.total === 1 ? "" : "s"}`;
   }
   if (progress.totalBytes) {
-    return `uploading ${formatBytes(progress.uploadedBytes ?? 0)} / ${formatBytes(progress.totalBytes)}`;
+    return `uploading ${formatCompactBytes(progress.uploadedBytes ?? 0)} / ${formatCompactBytes(progress.totalBytes)}`;
   }
   return `uploading ${progress.current}/${progress.total}`;
 }
@@ -1511,7 +1504,8 @@ export function UploadDashboard({
         <div className="mt-4">
           <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
             <span className="font-mono text-xs theme-muted">
-              {files.length} file{files.length !== 1 ? "s" : ""} · {formatBytes(totalFileSize)}
+              {files.length} file{files.length !== 1 ? "s" : ""} ·{" "}
+              {formatCompactBytes(totalFileSize)}
               <span className="theme-faint"> (direct to R2)</span>
             </span>
             <button
@@ -1534,7 +1528,9 @@ export function UploadDashboard({
                   <span className="font-mono text-sm truncate block">{file.name}</span>
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
-                  <span className="font-mono text-xs theme-muted">{formatBytes(file.size)}</span>
+                  <span className="font-mono text-xs theme-muted">
+                    {formatCompactBytes(file.size)}
+                  </span>
                   <button
                     type="button"
                     onClick={() => removeFile(file)}
@@ -1720,7 +1716,7 @@ export function UploadDashboard({
               <p className="font-mono text-xs theme-muted pt-2">
                 {transferResult.transfer.fileCount} file
                 {transferResult.transfer.fileCount !== 1 ? "s" : ""} ·{" "}
-                {formatBytes(transferResult.transferTotalSize ?? transferResult.totalSize)} ·
+                {formatCompactBytes(transferResult.transferTotalSize ?? transferResult.totalSize)} ·
                 expires{" "}
                 {new Date(transferResult.transfer.expiresAt).toLocaleDateString("en-GB", {
                   timeZone: "Europe/London",

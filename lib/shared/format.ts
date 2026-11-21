@@ -12,3 +12,11 @@ function formatBytes(bytes: number): string {
 }
 
 export { formatBytes };
+
+const COMPACT_BYTE_UNITS = ["b", "kb", "mb", "gb", "tb"];
+
+export function formatCompactBytes(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes < 1) return "0 b";
+  const unit = Math.min(Math.floor(Math.log2(bytes) / 10), COMPACT_BYTE_UNITS.length - 1);
+  return `${Number((bytes / 1024 ** unit).toFixed(1))} ${COMPACT_BYTE_UNITS[unit]}`;
+}

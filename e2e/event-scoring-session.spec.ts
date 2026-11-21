@@ -1,8 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { Pool } from "pg";
 
-const databaseUrl =
-  process.env.TEST_DATABASE_URL ?? "postgres://postgres:test@127.0.0.1:55432/mah_test";
+const databaseUrl = process.env.TEST_DATABASE_URL;
 
 test("viewing tickets in separate tabs never selects a retired points identity", async ({
   page,
