@@ -17,7 +17,7 @@ import { MultiplayerTelemetry } from "./multiplayer-telemetry.server";
 import { MultiplayerRealtimeBackplane } from "./multiplayer-realtime-backplane.server";
 import { MultiplayerLifecycle } from "./multiplayer-lifecycle.server";
 import { gameRealtimeChannel } from "./multiplayer-keys";
-import { MULTIPLAYER_GAME_REGISTRY, type MultiplayerGame } from "./multiplayer-telemetry";
+import type { MultiplayerGame } from "./multiplayer-telemetry";
 import {
   GameClock,
   GameIdGenerator,
@@ -146,13 +146,9 @@ export function multiplayerTelemetrySnapshot() {
 
 /** Publishes only a wake hint. Every client then reads its authorized snapshot over HTTPS. */
 export function publishMultiplayerRoomWake(game: MultiplayerGame, roomId: string) {
-  const version = Number(MULTIPLAYER_GAME_REGISTRY[game].channelVersion.slice(1));
   return runMultiplayerEffect(
     MultiplayerRealtimeBackplane.use((backplane) =>
-      backplane.publish(
-        gameRealtimeChannel(game, version, roomId),
-        JSON.stringify({ type: "wake" }),
-      ),
+      backplane.publish(gameRealtimeChannel(game, roomId), JSON.stringify({ type: "wake" })),
     ),
   );
 }
@@ -166,11 +162,10 @@ export function publishMultiplayerRoomTermination(
     role?: string;
   },
 ) {
-  const version = Number(MULTIPLAYER_GAME_REGISTRY[game].channelVersion.slice(1));
   return runMultiplayerEffect(
     MultiplayerRealtimeBackplane.use((backplane) =>
       backplane.publish(
-        gameRealtimeChannel(game, version, roomId),
+        gameRealtimeChannel(game, roomId),
         JSON.stringify({ type: "terminal", ...input }),
       ),
     ),

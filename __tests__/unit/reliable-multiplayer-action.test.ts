@@ -63,6 +63,31 @@ describe("reliable multiplayer actions", () => {
     expect(actionIds[1]).not.toBe(actionIds[0]);
   });
 
+  it("keeps the current retry ID when an older action succeeds late", async () => {
+    const previous = Promise.withResolvers<string>();
+    const dispatch = vi
+      .fn<(_action: { type: string }, actionId: string) => Promise<string>>()
+      .mockReturnValueOnce(previous.promise)
+      .mockRejectedValueOnce(new Error("response lost"))
+      .mockResolvedValueOnce("accepted");
+    const send = createReliableMultiplayerActionDispatcher(dispatch);
+    const action = { type: "phase.advance" };
+
+    send.synchronize(2);
+    const older = send(action);
+    await Promise.resolve();
+    send.synchronize(3);
+    await expect(send(action)).rejects.toThrow("response lost");
+
+    previous.resolve("accepted");
+    await older;
+    await expect(send(action)).resolves.toBe("accepted");
+    expect(dispatch).toHaveBeenCalledTimes(3);
+    const [firstId, currentId, retryId] = dispatch.mock.calls.map(([, actionId]) => actionId);
+    expect(currentId).not.toBe(firstId);
+    expect(retryId).toBe(currentId);
+  });
+
   it("does not retain a late failure from an older room state", async () => {
     const actionIds: string[] = [];
     let rejectFirst: (error: Error) => void = () => undefined;

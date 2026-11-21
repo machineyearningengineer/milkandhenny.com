@@ -1,5 +1,4 @@
 import { authorizeCentreSocket } from "@/features/things/centre/centre-room.server";
-import { centreRealtimeChannel } from "@/features/things/centre/centre-keys";
 import { createMultiplayerWakeHandler } from "@/features/things/shared/multiplayer-wake-handler.server";
 
 interface CentreSession {
@@ -8,7 +7,6 @@ interface CentreSession {
 }
 
 export default createMultiplayerWakeHandler<CentreSession>({
-  channel: centreRealtimeChannel,
   game: "centre",
   async authorize(payload) {
     const roomId = typeof payload.roomId === "string" ? payload.roomId : "";

@@ -1,5 +1,4 @@
 import { authorizeSameBrainSocket } from "@/features/things/same-brain/same-brain-room.server";
-import { sameBrainRealtimeChannel } from "@/features/things/same-brain/same-brain-keys";
 import { createMultiplayerWakeHandler } from "@/features/things/shared/multiplayer-wake-handler.server";
 
 interface SameBrainRealtimeSession {
@@ -8,7 +7,6 @@ interface SameBrainRealtimeSession {
 }
 
 export default createMultiplayerWakeHandler<SameBrainRealtimeSession>({
-  channel: sameBrainRealtimeChannel,
   game: "same-brain",
   async authorize(payload) {
     const roomId = typeof payload.roomId === "string" ? payload.roomId : "";

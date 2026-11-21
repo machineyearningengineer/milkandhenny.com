@@ -3,7 +3,6 @@ import {
   PRESENTATION_ROOM_PATTERN,
   PRESENTATION_TOKEN_PATTERN,
 } from "@/features/things/pitches/presentation-validation";
-import { gameRealtimeChannel } from "@/features/things/shared/multiplayer-keys";
 import { createMultiplayerWakeHandler } from "@/features/things/shared/multiplayer-wake-handler.server";
 
 interface PresentationRealtimeSession {
@@ -13,7 +12,6 @@ interface PresentationRealtimeSession {
 }
 
 export default createMultiplayerWakeHandler<PresentationRealtimeSession>({
-  channel: (roomId) => gameRealtimeChannel("pitch-presentation", 1, roomId),
   game: "pitch-presentation",
   async authorize(payload) {
     const roomId = typeof payload.roomId === "string" ? payload.roomId : "";
